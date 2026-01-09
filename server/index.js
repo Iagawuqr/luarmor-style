@@ -215,38 +215,161 @@ function isObfuscated(s) {
     return [/Luraph/i, /Moonsec/i, /IronBrew/i, /Prometheus/i, /PSU/i].some(r => r.test(s.substring(0, 500)));
 }
 
-// === SCRIPT WRAPPER ===
+// === SCRIPT WRAPPER (COMPLETE) ===
 function wrapScript(s, serverUrl) {
     const o = (config.OWNER_USER_IDS || []).join(',');
     const w = (config.WHITELIST_USER_IDS || []).join(',');
     const sid = crypto.randomBytes(16).toString('hex');
     const antiSpyEnabled = config.ANTI_SPY_ENABLED !== false;
     const autoBan = config.AUTO_BAN_SPYTOOLS === true;
-    return `--[[ Script Shield Protection Layer ]]
+    
+    return `--[[ Shield Protection For Attacker ]]
 local _CFG={o={${o}},w={${w}},banUrl="${serverUrl}/api/ban",webhookUrl="${serverUrl}/api/webhook/suspicious",hbUrl="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},ab=${autoBan},hbi=45}
-local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService") local _A=true local _CON={} local _HB_FAIL=0
+local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService")
+local _A=true local _CON={} local _HB_FAIL=0 
+local _SAFE_GUIS={} -- Snapshot list
+
+-- Helper: Notification
 local function _n(t,x,d)pcall(function()_SG:SetCore("SendNotification",{Title=t,Text=x,Duration=d or 3})end)end
+
+-- Helper: HWID
 local function _hw()local s,r=pcall(function()if gethwid then return gethwid()end;if getexecutorname then return getexecutorname()..tostring(_L.UserId)end;return"NK_"..tostring(_L.UserId)end)return s and r or"UNK"end
-local function _hp(u,d)local r=(syn and syn.request)or request or http_request or(http and http.request)if not r then return nil end;local s,res=pcall(function()return r({Url=u,Method="POST",Headers={["Content-Type"]="application/json",["User-Agent"]="Roblox/WinInet",["x-hwid"]=_hw(),["x-roblox-id"]=tostring(_L.UserId),["x-session-id"]=_CFG.sid},Body=_H:JSONEncode(d)})end)if not s or not res then return nil end;if res.StatusCode~=200 then return nil end;local ps,pd=pcall(function()return _H:JSONDecode(res.Body)end)return ps and pd or nil end
+
+-- Helper: HTTP Post
+local function _hp(u,d)
+    if not request then return end
+    pcall(function()request({Url=u,Method="POST",Headers={["Content-Type"]="application/json",["User-Agent"]="Roblox/WinInet",["x-hwid"]=_hw(),["x-roblox-id"]=tostring(_L.UserId),["x-session-id"]=_CFG.sid},Body=_H:JSONEncode(d)})end)
+end
+
+-- Helper: Checks
 local function _isW(u)for _,i in ipairs(_CFG.w)do if u==i then return true end end;return false end
 local function _isO(u)for _,i in ipairs(_CFG.o)do if u==i then return true end end;return false end
-local function _cl(msg)if not _A then return end;_A=false;_n("⚠️",msg or"Script terminated",3);for i=#_CON,1,-1 do pcall(function()_CON[i]:Disconnect()end)end;task.wait(0.5);_L:Kick(msg or"Session terminated")end
-local _SPY_T={"SimpleSpy","HttpSpy","RemoteSpy","Hydroxide","Dex","DarkDex","InfiniteYield","CMD-X","ServerSpy","ScriptDumper"}
-local _SPY_G={"simplespy","httpspy","remotespy","hydroxide","dex","darkdex","infiniteyield","cmdx","serverspy"}
-local _SNAP_G={} local _SNAP_GL={}
-local function _takeSnapshot()local e=getgenv and getgenv()or _G;for _,name in ipairs(_SPY_T)do if rawget(e,name)then _SNAP_GL[name]=true end end;pcall(function()for _,g in pairs(_CG:GetChildren())do if g:IsA("ScreenGui")then _SNAP_G[g.Name:lower()]=true end end end)end
-local function _detectNewSpy()if _isW(_L.UserId)then return nil end;local e=getgenv and getgenv()or _G;for _,name in ipairs(_SPY_T)do local ok,v=pcall(function()return rawget(e,name)end)if ok and v and not _SNAP_GL[name]then return name end end;pcall(function()for _,g in pairs(_CG:GetChildren())do if g:IsA("ScreenGui")then local n=g.Name:lower()for _,spy in ipairs(_SPY_G)do if n:find(spy)and not _SNAP_G[n]then return g.Name end end end end end)return nil end
-local function _startAntiSpy()if not _CFG.as or _isW(_L.UserId)then return end;task.spawn(function()task.wait(2);_takeSnapshot();task.wait(1);_takeSnapshot();while _A do task.wait(20);if not _A then break end;local tool=_detectNewSpy()if tool then pcall(function()_hp(_CFG.webhookUrl,{userId=_L.UserId,hwid=_hw(),tool=tool,sessionId=_CFG.sid})end)if _CFG.ab then pcall(function()_hp(_CFG.banUrl,{hwid=_hw(),playerId=_L.UserId,reason="Spy tool: "..tool,sessionId=_CFG.sid})end)end;_cl("Security violation: "..tool)break end end end)end
-local function _startHeartbeat()task.spawn(function()task.wait(10)while _A do local res=_hp(_CFG.hbUrl,{sessionId=_CFG.sid,hwid=_hw(),userId=_L.UserId})if res then _HB_FAIL=0;if res.action=="TERMINATE"then _cl(res.reason or"Session terminated by admin")break elseif res.action=="MESSAGE"and res.message then _n("📢",res.message,5)end else _HB_FAIL=_HB_FAIL+1;if _HB_FAIL>=5 then _cl("Connection lost")break end end;task.wait(_CFG.hbi)end end)end
-local function _checkOwner()for _,p in pairs(_P:GetPlayers())do if _isO(p.UserId)and p~=_L then return false end end;return true end
-local function _startOwnerMonitor()table.insert(_CON,_P.PlayerAdded:Connect(function(p)task.wait(1)if _isO(p.UserId)then _cl("Owner joined server")end end))end
-if not _checkOwner()then _n("⚠️","Owner in server",3)return end
+
+-- CLEANUP & KICK
+local function _cl(msg)
+    if not _A then return end
+    _A=false
+    _n("⚠️",msg or"Script terminated",5)
+    
+    -- Disconnect events
+    for i=#_CON,1,-1 do pcall(function()_CON[i]:Disconnect()end)end
+    
+    -- Destroy GUIs created by script (if tracked) or generic cleanup
+    -- (Disini bisa ditambahkan logika untuk destroy GUI spesifik script Anda jika Anda menyimpannya dalam variabel global/table)
+    
+    task.wait(1)
+    if msg then _L:Kick(msg) end
+end
+
+-- 1. OWNER DETECTION
+local function _checkOwner()
+    for _,p in pairs(_P:GetPlayers())do 
+        if _isO(p.UserId) and p~=_L then return false end 
+    end
+    return true
+end
+
+local function _startOwnerMonitor()
+    table.insert(_CON,_P.PlayerAdded:Connect(function(p)
+        task.wait(1)
+        if _isO(p.UserId) then 
+            _cl("Owner joined the server") -- Script mati + Kick user
+        end
+    end))
+end
+
+-- 2. SMART ANTI-SPY
+local _BL_NAMES = {"spy", "dex", "remote", "http", "dumper", "explorer"}
+local function _takeSnapshot()
+    pcall(function()
+        for _,g in pairs(_CG:GetChildren())do _SAFE_GUIS[g]=true end
+    end)
+end
+
+local function _scan()
+    if not _CFG.as or _isW(_L.UserId) then return end
+    pcall(function()
+        for _,g in pairs(_CG:GetChildren())do
+            if not _SAFE_GUIS[g] then -- Jika GUI baru (tidak ada di snapshot)
+                local n=g.Name:lower()
+                for _,b in ipairs(_BL_NAMES)do
+                    if n:find(b) and not n:find("roblox") and not n:find("app") then
+                        -- Lapor ke server
+                        _hp(_CFG.webhookUrl,{userId=_L.UserId,tool=g.Name,sessionId=_CFG.sid})
+                        if _CFG.ab then 
+                            _hp(_CFG.banUrl,{hwid=_hw(),playerId=_L.UserId,reason="Spy Tool: "..g.Name,sessionId=_CFG.sid})
+                        end
+                        -- Kick user
+                        _cl("Security Violation: "..g.Name)
+                        while true do end -- Freeze localscript
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function _startAntiSpy()
+    if not _CFG.as then return end
+    task.spawn(function()
+        _takeSnapshot() -- Ambil snapshot awal
+        task.wait(1)
+        while _A do
+            _scan() -- Cek perubahan
+            task.wait(3)
+        end
+    end)
+end
+
+-- 3. HEARTBEAT (KILL SWITCH)
+local function _startHeartbeat()
+    task.spawn(function()
+        task.wait(10)
+        while _A do
+            local res
+            -- Panggil heartbeat endpoint (perlu return value untuk cek status)
+            if request then
+                local s,r = pcall(function() 
+                    return request({Url=_CFG.hbUrl,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=_H:JSONEncode({sessionId=_CFG.sid,hwid=_hw(),userId=_L.UserId})})
+                end)
+                if s and r and r.StatusCode==200 then
+                    res = _H:JSONDecode(r.Body)
+                end
+            end
+
+            if res then 
+                _HB_FAIL=0
+                if res.action=="TERMINATE" then 
+                    _cl(res.reason or "Session terminated by admin")
+                    break
+                elseif res.action=="MESSAGE" and res.message then 
+                    _n("📢",res.message,5)
+                end 
+            else 
+                _HB_FAIL=_HB_FAIL+1
+                if _HB_FAIL>=5 then 
+                    _cl("Connection lost to server")
+                    break 
+                end 
+            end
+            task.wait(_CFG.hbi)
+        end
+    end)
+end
+
+-- === MAIN EXECUTION FLOW ===
+if not _checkOwner() then 
+    _n("⚠️","Owner is in this server!",5)
+    return -- Jangan load script jika owner ada
+end
+
 _startOwnerMonitor()
 _startAntiSpy()
 _startHeartbeat()
+
+-- Load Real Script
 ${s}`;
 }
-
 // === LOADERS (LUA) ===
 function getLoader(url) {
     return `local S="${url}" local H=game:GetService("HttpService") local P=game:GetService("Players") local L=P.LocalPlayer 
