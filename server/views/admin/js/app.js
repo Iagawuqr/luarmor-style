@@ -217,6 +217,10 @@ const App = {
                 case 'settings':
                     content.innerHTML = this.renderSettings();
                     break;
+                case'whitelist':
+                    content.innerHTML=Whitelist.render();
+                    Whitelist.init();
+                    break;
                 default:
                     content.innerHTML = Dashboard.render();
                     Dashboard.init();
