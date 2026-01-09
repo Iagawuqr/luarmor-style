@@ -2,317 +2,556 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Admin Panel</title>
 <style>
-/* Base Reset & Typography */
-html{font-size:16px}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;overflow-x:hidden}
-h1,h2,h3,h4{margin:0;padding:0;font-weight:600}
-p{margin:0;padding:0;color:#888}
-code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* === RESET & BASE === */
+:root{--bg:#0a0a0f;--card-bg:rgba(30,30,40,0.6);--border:rgba(255,255,255,0.08);--primary:#8b5cf6;--primary-hover:#7c3aed;--text:#fff;--text-muted:#9ca3af;--danger:#ef4444;--success:#22c55e;--warning:#f59e0b}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:14px}
+h1,h2,h3{font-weight:600;letter-spacing:-0.5px}
+code{font-family:monospace;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;color:#e2e8f0}
 
-/* Utilities */
+/* === UTILITIES === */
 .hidden{display:none!important}
-.spinner{width:2.5rem;height:2.5rem;border:3px solid rgba(255,255,255,0.1);border-top-color:#8b5cf6;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto}
+.spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-/* Card & Container */
-.card{background:rgba(20,20,35,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;backdrop-filter:blur(10px)}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
-.stat-card{padding:1.25rem}
-.stat-icon{font-size:1.75rem;margin-bottom:0.5rem}
-.stat-value{font-size:1.75rem;font-weight:700}
-.stat-label{color:#666;font-size:0.875rem}
-.content-grid{display:grid;grid-template-columns:2fr 1fr;gap:1rem}
-.actions-row{display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:flex-end} /* Added justify-content:flex-end */
-.info-box{background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:0.5rem;padding:1rem;margin-bottom:1rem;font-size:0.875rem}
-
-/* Buttons */
-.btn{padding:0.625rem 1rem;border:none;border-radius:0.5rem;cursor:pointer;font-size:0.875rem;display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s;white-space:nowrap}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn-primary{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff}
-.btn-secondary{background:rgba(255,255,255,0.1);color:#fff}
-.btn-secondary:hover{background:rgba(255,255,255,0.2)}
-.btn-danger{background:#ef4444;color:#fff}
-.btn-success{background:#22c55e;color:#fff}
-.btn-warning{background:#f59e0b;color:#fff}
-.btn-sm{padding:0.375rem 0.75rem;font-size:0.75rem}
-
-/* Forms */
-.form-input,.form-select{width:100%;padding:0.75rem 1rem;background:rgba(15,15,25,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;color:#fff;font-size:0.875rem}
-.form-input:focus,.form-select:focus{outline:none;border-color:#8b5cf6}
-.form-group{margin-bottom:1rem}
-.form-label{display:block;margin-bottom:0.375rem;color:#888;font-size:0.875rem}
-.form-help{font-size:0.75rem;color:#666;margin-top:0.25rem}
-
-/* Toasts */
-.toast-container{position:fixed;bottom:1.25rem;right:1.25rem;z-index:9999}
-.toast{background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;padding:0.75rem 1rem;margin-top:0.625rem;animation:slideIn 0.3s}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-
-/* Login Screen */
-.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.25rem}
-.login-box{background:rgba(20,20,35,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:1rem;padding:2.5rem;width:100%;max-width:400px}
-.login-title{font-size:1.5rem;text-align:center;margin-bottom:0.5rem}
-.login-subtitle{color:#888;text-align:center;margin-bottom:1.5rem;font-size:0.875rem}
-.login-error{background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#ef4444;padding:0.75rem;border-radius:0.5rem;margin-bottom:1rem;font-size:0.875rem}
-
-/* App Layout */
+/* === LAYOUT === */
 .app{display:flex;min-height:100vh}
-.sidebar{width:16.25rem;background:rgba(15,15,25,0.95);border-right:1px solid rgba(255,255,255,0.1);padding:1.25rem;position:fixed;height:100vh;overflow-y:auto;z-index:100;transition:transform 0.3s}
-.sidebar-logo{display:flex;align-items:center;gap:0.75rem;margin-bottom:2rem}
-.sidebar-logo-icon{width:2.5rem;height:2.5rem;background:linear-gradient(135deg,#8b5cf6,#6366f1);border-radius:0.625rem;display:flex;align-items:center;justify-content:center;font-size:1.25rem}
-.sidebar-logo-text{font-size:1.125rem;font-weight:700}
-.nav-section{margin-bottom:1.5rem}
-.nav-section-title{font-size:0.6875rem;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem;padding:0 0.75rem}
-.nav-item{display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0.75rem;border-radius:0.5rem;color:#888;cursor:pointer;transition:all 0.2s;margin-bottom:0.25rem}
-.nav-item:hover{background:rgba(139,92,246,0.1);color:#fff}
-.nav-item.active{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff}
-.main-content{flex:1;margin-left:16.25rem;padding:1.5rem;transition:margin 0.3s}
-.page-content{max-width:1200px;margin:0 auto}
-.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
-.page-title{font-size:1.75rem;margin:0}
-.page-subtitle{color:#666;margin:0.25rem 0 0}
+.sidebar{width:260px;background:#111116;border-right:1px solid var(--border);position:fixed;height:100vh;z-index:50;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
+.main-content{flex:1;margin-left:260px;padding:24px;width:100%}
 
-/* Tables */
-.table-container{overflow-x:auto; /* Crucial for horizontal scrolling */
--webkit-overflow-scrolling: touch; /* Improves scrolling performance on iOS */
-margin-bottom: 1rem; /* Space below table */}
-.table{width:100%;border-collapse:collapse;min-width:650px} /* min-width to force scroll on smaller screens */
-.table th,.table td{padding:0.75rem 1rem;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}
-.table th{font-size:0.75rem;color:#888;text-transform:uppercase;font-weight:600;white-space:nowrap}
-.table td{font-size:0.875rem}
-.table tr:hover{background:rgba(139,92,246,0.05)}
-.badge{display:inline-block;padding:0.25rem 0.625rem;border-radius:1.25rem;font-size:0.75rem;font-weight:500}
-.badge-success{background:rgba(34,197,94,0.2);color:#22c55e}
-.badge-danger{background:rgba(239,68,68,0.2);color:#ef4444}
-.badge-warning{background:rgba(245,158,11,0.2);color:#f59e0b}
-.badge-info{background:rgba(59,130,246,0.2);color:#3b82f6}
-.badge-purple{background:rgba(139,92,246,0.2);color:#8b5cf6}
+/* === COMPONENT: CARD === */
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;backdrop-filter:blur(10px)}
+.card-header{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-title{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
 
-/* Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:all 0.2s;padding:1.25rem}
-.modal-overlay.active{opacity:1;visibility:visible}
-.modal{background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:1rem;width:100%;max-width:500px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
-.modal-header{padding:1.25rem;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center}
-.modal-title{font-size:1.125rem;font-weight:600}
-.modal-close{background:none;border:none;color:#888;font-size:1.5rem;cursor:pointer}
-.modal-body{padding:1.25rem;overflow-y:auto;flex-grow:1} /* Allows modal body to scroll */
-.modal-footer{padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;gap:0.625rem}
+/* === COMPONENT: BUTTONS === */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all 0.2s;text-decoration:none;user-select:none}
+.btn:active{transform:scale(0.98)}
+.btn-sm{padding:6px 12px;font-size:12px;height:32px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(139,92,246,0.3)}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#fff}
+.btn-secondary:hover{background:rgba(255,255,255,0.12)}
+.btn-danger{background:rgba(239,68,68,0.15);color:var(--danger)}
+.btn-danger:hover{background:rgba(239,68,68,0.25)}
+.btn-success{background:rgba(34,197,94,0.15);color:var(--success)}
+.btn-icon{padding:8px;width:36px;height:36px}
 
-/* Responsive adjustments */
-.mobile-menu{display:none;position:fixed;top:1rem;left:1rem;z-index:101;background:rgba(139,92,246,0.9);border:none;color:#fff;width:2.75rem;height:2.75rem;border-radius:0.625rem;font-size:1.25rem;cursor:pointer}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+/* === COMPONENT: INPUTS === */
+.form-group{margin-bottom:16px}
+.form-label{display:block;margin-bottom:6px;color:var(--text-muted);font-size:13px}
+.form-input,.form-select{width:100%;padding:10px 14px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:14px;transition:border-color 0.2s}
+.form-input:focus{outline:none;border-color:var(--primary)}
 
-/* MEDIA QUERIES FOR RESPONSIVENESS */
-@media(max-width:1024px){
-.stat-grid{grid-template-columns:repeat(2,1fr)}
-.content-grid{grid-template-columns:1fr}
-.main-content{margin-left:0} /* Reset margin-left for content when sidebar is hidden */
+/* === COMPONENT: TABLE === */
+.table-container{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table{width:100%;border-collapse:collapse;min-width:600px}
+.table th{text-align:left;padding:12px 16px;color:var(--text-muted);font-size:12px;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:600}
+.table td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* === COMPONENT: BADGE === */
+.badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;display:inline-block}
+.badge-success{background:rgba(34,197,94,0.15);color:var(--success)}
+.badge-danger{background:rgba(239,68,68,0.15);color:var(--danger)}
+.badge-warning{background:rgba(245,158,11,0.15);color:var(--warning)}
+.badge-info{background:rgba(59,130,246,0.15);color:#3b82f6}
+.badge-purple{background:rgba(139,92,246,0.15);color:var(--primary)}
+
+/* === PAGE HEADER === */
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.page-title h1{font-size:24px}
+.page-actions{display:flex;gap:10px}
+
+/* === SIDEBAR === */
+.sidebar-header{padding:24px;display:flex;align-items:center;gap:12px}
+.logo-icon{width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo-text{font-size:18px;font-weight:700}
+.nav-item{padding:12px 24px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.2s;font-size:14px;border-left:3px solid transparent}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,0.03)}
+.nav-item.active{color:#fff;background:rgba(139,92,246,0.1);border-left-color:var(--primary)}
+.nav-section{font-size:11px;text-transform:uppercase;color:#555;padding:20px 24px 8px;font-weight:700;letter-spacing:0.5px}
+
+/* === LOGIN === */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-card{width:100%;max-width:400px;padding:40px;text-align:center}
+
+/* === MOBILE NAV === */
+.mobile-toggle{display:none;position:fixed;top:16px;left:16px;z-index:100;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px;color:#fff}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;backdrop-filter:blur(2px)}
+
+/* === MODAL === */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:90;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:0.2s}
+.modal-overlay.active{opacity:1;pointer-events:auto}
+.modal{width:90%;max-width:500px;background:#16161e;border-radius:12px;border:1px solid var(--border);transform:scale(0.95);transition:0.2s;max-height:90vh;display:flex;flex-direction:column}
+.modal-overlay.active .modal{transform:scale(1)}
+.modal-body{padding:20px;overflow-y:auto}
+.modal-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+    .sidebar{transform:translateX(-100%)}
+    .sidebar.open{transform:translateX(0)}
+    .main-content{margin-left:0;padding:16px;padding-top:70px}
+    .mobile-toggle{display:block}
+    .sidebar-overlay.open{display:block}
+    
+    .page-header{flex-direction:column;align-items:flex-start;gap:16px}
+    .page-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .page-actions .btn{width:100%}
+    
+    .stat-grid{grid-template-columns:1fr 1fr!important}
+    .content-grid{grid-template-columns:1fr!important}
+    
+    .table{font-size:13px}
+    .table th,.table td{padding:10px}
 }
-@media(max-width:768px){ /* Tablet and small phones */
-html{font-size:14px} /* Smaller base font size for better scaling */
-.mobile-menu{display:flex;align-items:center;justify-content:center}
-.sidebar{transform:translateX(-100%);padding-top:4.375rem} /* Adjust padding for mobile menu */
-.sidebar.open{transform:translateX(0)}
-.sidebar-overlay.open{display:block}
-.main-content{margin-left:0;padding:1rem;padding-top:4.375rem} /* Adjust padding for mobile menu */
-.page-header{flex-direction:column;align-items:flex-start;gap:0.5rem} /* Reduced gap */
-.page-title{font-size:1.5rem} /* Smaller title on mobile */
-.stat-grid{grid-template-columns:1fr 1fr}
-.stat-card{padding:1rem}
-.stat-value{font-size:1.5rem}
-.btn{padding:0.5rem 0.875rem;font-size:0.8125rem} /* Smaller buttons on mobile */
-.table th,.table td{padding:0.5rem 0.625rem;font-size:0.75rem} /* Smaller table text on mobile */
-.badge{font-size:0.625rem;padding:0.2rem 0.5rem}
-.form-input,.form-select{padding:0.625rem 0.75rem;font-size:0.8125rem}
-.modal{max-width:95%}
-.login-box{padding:2rem}
-.table-container{margin-bottom:0.5rem} /* Smaller margin below table */
-.table{min-width:550px} /* Adjust min-width for table to prevent excessive cutting */
-}
-@media(max-width:480px){ /* Smaller mobile phones */
-html{font-size:12px} /* Even smaller base font size */
-.stat-grid{grid-template-columns:1fr}
-.actions-row{flex-direction:column}
-.actions-row .btn{width:100%}
-.modal{max-width:95%}
-.login-box{padding:1.5rem}
-.login-title{font-size:1.25rem}
-.login-subtitle{font-size:0.75rem}
-.mobile-menu{width:2.5rem;height:2.5rem;font-size:1.125rem;top:0.75rem;left:0.75rem}
-.sidebar{padding-top:3.75rem}
-.main-content{padding-top:3.75rem}
-.page-header{gap:0.25rem} /* Even smaller gap */
-.table{min-width:450px} /* Further adjust min-width */
+@media (max-width: 480px) {
+    .stat-grid{grid-template-columns:1fr!important}
 }
 </style>
 </head>
 <body>
 
-<!-- Mobile Menu Button -->
-<button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+<!-- Mobile Header / Toggle -->
+<button class="mobile-toggle" onclick="App.toggleSidebar()">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"></path></svg>
+</button>
 
 <!-- Login Screen -->
-<div class="login-screen" id="loginScreen">
-<div class="login-box">
-<div style="text-align:center;font-size:3rem;margin-bottom:1rem">🛡️</div>
-<h1 class="login-title">Admin Panel</h1>
-<p class="login-subtitle">Enter your admin key to continue</p>
-<div class="login-error hidden" id="loginError"><span id="loginErrorText"></span></div>
-<div style="margin-bottom:1rem"><input type="password" class="form-input" id="adminKeyInput" placeholder="Enter admin key..."></div>
-<button class="btn btn-primary" style="width:100%" id="loginBtn">🚀 Login</button>
-</div>
+<div id="loginScreen" class="login-wrap">
+    <div class="card login-card">
+        <div style="font-size:40px;margin-bottom:16px">🛡️</div>
+        <h2 style="margin-bottom:8px">Admin Access</h2>
+        <p style="margin-bottom:24px">Enter security key to continue</p>
+        <div id="loginError" class="badge badge-danger hidden" style="margin-bottom:16px;display:none">Invalid Key</div>
+        <input type="password" id="adminKeyInput" class="form-input" placeholder="Admin Key..." style="margin-bottom:16px;text-align:center">
+        <button id="loginBtn" class="btn btn-primary" style="width:100%">Verify Access</button>
+    </div>
 </div>
 
-<!-- Dashboard Screen -->
-<div class="app hidden" id="dashboardScreen">
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-<aside class="sidebar" id="sidebar">
-<div class="sidebar-logo"><div class="sidebar-logo-icon">🛡️</div><div class="sidebar-logo-text">Script Shield</div></div>
-<div class="nav-section">
-<div class="nav-section-title">Main</div>
-<div class="nav-item active" data-page="dashboard">📊 Dashboard</div>
-<div class="nav-item" data-page="sessions">👥 Sessions</div>
-<div class="nav-item" data-page="bans">🚫 Bans</div>
-<div class="nav-item" data-page="suspended">⏸️ Suspended</div>
-<div class="nav-item" data-page="logs">📋 Logs</div>
+<!-- Main App -->
+<div id="dashboardScreen" class="app hidden">
+    <div class="sidebar-overlay" onclick="App.toggleSidebar()"></div>
+    
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">🛡️</div>
+            <div class="logo-text">Shield</div>
+        </div>
+        
+        <div style="flex:1;overflow-y:auto">
+            <div class="nav-section">Analytics</div>
+            <div class="nav-item active" data-page="dashboard">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                Dashboard
+            </div>
+            <div class="nav-item" data-page="logs">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Activity Logs
+            </div>
+
+            <div class="nav-section">Management</div>
+            <div class="nav-item" data-page="sessions">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Active Sessions
+            </div>
+            <div class="nav-item" data-page="bans">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                Ban Manager
+            </div>
+            <div class="nav-item" data-page="suspended">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="10" y1="15" x2="10" y2="9"></line><line x1="14" y1="15" x2="14" y2="9"></line></svg>
+                Suspended
+            </div>
+            <div class="nav-item" data-page="whitelist">
+                <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                Whitelist
+            </div>
+
+            <div class="nav-section">System</div>
+            <div class="nav-item" data-page="settings">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Settings
+            </div>
+        </div>
+
+        <div style="padding:16px;border-top:1px solid var(--border)">
+            <div class="nav-item" onclick="Auth.logout()" style="color:var(--danger)">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div id="pageContent">
+            <!-- Dynamic Content -->
+            <div style="text-align:center;padding:60px"><div class="spinner"></div></div>
+        </div>
+    </main>
 </div>
-<div class="nav-section">
-<div class="nav-section-title">System</div>
-<div class="nav-item" data-page="whitelist">⭐ Whitelist</div>
-<div class="nav-item" data-page="settings">⚙️ Settings</div>
+
+<!-- Modals -->
+<div id="generalModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Title</h3>
+            <button class="btn btn-secondary btn-sm" onclick="App.closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer" id="modalFooter"></div>
+    </div>
 </div>
-<div style="margin-top:auto;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,0.1)">
-<div class="nav-item" onclick="Auth.logout()">🚪 Logout</div>
-</div>
-</aside>
-<main class="main-content"><div class="page-content" id="pageContent"><div style="text-align:center;padding:3.75rem"><div class="spinner"></div></div></div></main>
-</div>
-<div class="toast-container" id="toastContainer"></div>
+
+<div id="toastContainer" class="toast-container"></div>
 
 <script>
-// === GLOBAL FUNCTIONS ===
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open')}
+// === ICONS (SVG) ===
+const ICONS={
+    refresh: `<svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`,
+    add: `<svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
+    trash: `<svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+    play: `<svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`,
+    pause: `<svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
+    kill: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`
+};
 
-// === CONFIG ===
 const CONFIG={API_BASE:window.location.origin};
 
-// === UTILS ===
 const Utils={
-toast(msg,type='info'){const c=document.getElementById('toastContainer');if(!c)return;const t=document.createElement('div');t.className='toast';t.innerHTML=`<span>${type==='success'?'✅':type==='error'?'❌':'ℹ️'}</span> ${msg}`;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},3000)},
-formatDate(d){if(!d)return'N/A';try{const x=new Date(d),n=Date.now()-x;if(n<60000)return'Just now';if(n<3600000)return Math.floor(n/60000)+'m ago';if(n<86400000)return Math.floor(n/3600000)+'h ago';return x.toLocaleDateString()}catch{return'N/A'}},
-formatNumber(n){if(!n)return'0';if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return String(n)},
-escapeHtml(s){if(!s)return'';const d=document.createElement('div');d.textContent=String(s);return d.innerHTML},
-truncate(s,l=20){if(!s)return'';s=String(s);return s.length>l?s.substring(0,l)+'...':s}
+    toast(msg,type='info'){
+        const c=document.getElementById('toastContainer');
+        const d=document.createElement('div');
+        d.className='toast';
+        d.style.borderColor=type==='success'?'var(--success)':type==='error'?'var(--danger)':'var(--primary)';
+        d.innerHTML=msg;
+        c.appendChild(d);
+        setTimeout(()=>d.remove(),3000);
+    },
+    fmtDate(d){try{return new Date(d).toLocaleString()}catch{return'-'}},
+    esc(s){if(!s)return'';return s.toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")},
+    trunc(s,l=15){return s&&s.length>l?s.substring(0,l)+'...':s||'-'}
 };
 
-// === API ===
 const API={
-getKey(){return localStorage.getItem('admin_key')||''},
-setKey(k){localStorage.setItem('admin_key',k)},
-clearKey(){localStorage.removeItem('admin_key')},
-async request(endpoint,options={}){
-const url=CONFIG.API_BASE+endpoint;
-console.log('[API]',options.method||'GET',endpoint);
-try{
-const controller=new AbortController();
-const timeout=setTimeout(()=>controller.abort(),15000);
-const res=await fetch(url,{...options,signal:controller.signal,headers:{'Content-Type':'application/json','x-admin-key':this.getKey(),...(options.headers||{})}});
-clearTimeout(timeout);
-const data=await res.json().catch(()=>({success:false,error:'Invalid response'}));
-console.log('[API] Response:',res.status,data);
-return data;
-}catch(e){console.error('[API] Error:',e);return{success:false,error:e.message||'Request failed'}}
-},
-get(endpoint,params={}){const q=new URLSearchParams(params).toString();return this.request(q?`${endpoint}?${q}`:endpoint)},
-post(endpoint,body={}){return this.request(endpoint,{method:'POST',body:JSON.stringify(body)})},
-delete(endpoint,body=null){return this.request(endpoint,{method:'POST',body:body?JSON.stringify(body):null})} // Changed to POST for consistency
+    async req(ep,opt={}){
+        try{
+            const k=localStorage.getItem('ak');
+            const r=await fetch(CONFIG.API_BASE+ep,{...opt,headers:{...opt.headers,'Content-Type':'application/json','x-admin-key':k}});
+            const d=await r.json();
+            return d;
+        }catch(e){return{success:false,error:e.message}}
+    },
+    get(e,p){return this.req(p?e+'?'+new URLSearchParams(p):e)},
+    post(e,b){return this.req(e,{method:'POST',body:JSON.stringify(b)})}
 };
 
-// === AUTH ===
 const Auth={
-isAuth:false,
-async check(){const k=API.getKey();if(!k)return false;const r=await API.get('/api/admin/stats');this.isAuth=r.success;if(!this.isAuth)API.clearKey();return this.isAuth},
-async login(key){if(!key||key.length<3)return{success:false,error:'Key too short'};API.setKey(key.trim());const r=await API.get('/api/admin/stats');if(r.success){this.isAuth=true;return{success:true}}API.clearKey();return{success:false,error:r.error||'Invalid key'}},
-logout(){API.clearKey();this.isAuth=false;App.showLogin()}
+    async check(){const r=await API.get('/api/admin/stats');if(r.success)return true;localStorage.removeItem('ak');return false},
+    async login(){
+        const k=document.getElementById('adminKeyInput').value;
+        const btn=document.getElementById('loginBtn');
+        btn.disabled=true;btn.innerHTML='Verifying...';
+        localStorage.setItem('ak',k);
+        const ok=await this.check();
+        if(ok){
+            App.showDash();
+        }else{
+            document.getElementById('loginError').style.display='inline-block';
+            btn.disabled=false;btn.innerHTML='Verify Access';
+        }
+    },
+    logout(){localStorage.removeItem('ak');location.reload()}
 };
 
-// === DASHBOARD ===
 const Dashboard={
-stats:{},
-async init(){await this.loadStats();await this.loadActivity()},
-async loadStats(){const r=await API.get('/api/admin/stats');if(r.success){this.stats={sessions:r.sessions||0,success:r.stats?.success||0,challenges:r.stats?.challenges||0,bans:r.stats?.bans||0};const el=id=>document.getElementById(id);if(el('statSessions'))el('statSessions').textContent=Utils.formatNumber(this.stats.sessions);if(el('statSuccess'))el('statSuccess').textContent=Utils.formatNumber(this.stats.success);if(el('statChallenges'))el('statChallenges').textContent=Utils.formatNumber(this.stats.challenges);if(el('statBans'))el('statBans').textContent=Utils.formatNumber(this.stats.bans)}},
-async loadActivity(){const c=document.getElementById('recentActivity');if(!c)return;const r=await API.get('/api/admin/logs',{limit:5});if(r.success&&r.logs?.length>0){c.innerHTML=r.logs.map(l=>`<div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid rgba(255,255,255,0.05)"><div style="width:32px;height:32px;border-radius:8px;background:${l.success?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${l.success?'✅':'❌'}</div><div style="flex:1;min-width:0"><div style="font-size:14px">${Utils.escapeHtml(l.action||'?')}</div><div style="font-size:12px;color:#666">${Utils.truncate(l.ip,15)} • ${Utils.formatDate(l.ts)}</div></div></div>`).join('')}else{c.innerHTML='<div style="text-align:center;padding:40px;color:#666">No activity</div>'}},
-async refresh(){await this.loadStats();await this.loadActivity();Utils.toast('Refreshed','success')},
-copyLoader(){navigator.clipboard.writeText(`loadstring(game:HttpGet("${CONFIG.API_BASE}/loader"))()`);Utils.toast('Copied!','success')},
-async clearCache(){if(confirm('Clear cache?')){const r=await API.post('/api/admin/cache/clear');Utils.toast(r.success?'Cleared':'Failed',r.success?'success':'error')}},
-render(){return`<div class="page-header"><div><h1 class="page-title">Dashboard</h1><p class="page-subtitle">System overview</p></div><button class="btn btn-secondary" onclick="Dashboard.refresh()">↻ Refresh</button></div><div class="stat-grid"><div class="card stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="statSessions">-</div><div class="stat-label">Sessions</div></div><div class="card stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="statSuccess">-</div><div class="stat-label">Success</div></div><div class="card stat-card"><div class="stat-icon">🔐</div><div class="stat-value" id="statChallenges">-</div><div class="stat-label">Challenges</div></div><div class="card stat-card"><div class="stat-icon">🚫</div><div class="stat-value" id="statBans">-</div><div class="stat-label">Bans</div></div></div><div class="content-grid"><div class="card"><div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.1)"><strong>📋 Recent Activity</strong></div><div id="recentActivity" style="min-height:200px;display:flex;align-items:center;justify-content:center"><div class="spinner"></div></div></div><div class="card"><div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.1)"><strong>⚡ Quick Actions</strong></div><div style="padding:16px;display:flex;flex-direction:column;gap:8px"><button class="btn btn-secondary" style="width:100%" onclick="App.navigate('sessions')">👥 Sessions</button><button class="btn btn-secondary" style="width:100%" onclick="App.navigate('bans')">🚫 Bans</button><button class="btn btn-secondary" style="width:100%" onclick="App.navigate('suspended')">⏸️ Suspended</button><button class="btn btn-secondary" style="width:100%" onclick="Dashboard.clearCache()">🗑️ Clear Cache</button><button class="btn btn-secondary" style="width:100%" onclick="Dashboard.copyLoader()">📋 Copy Loader</button></div></div></div>`}
+    async render(){
+        const r=await API.get('/api/admin/stats');
+        const s=r.stats||{};
+        return `
+        <div class="page-header">
+            <div class="page-title"><h1>Dashboard</h1><p>System Overview</p></div>
+            <div class="page-actions"><button class="btn btn-secondary" onclick="App.nav('dashboard')">${ICONS.refresh} Refresh</button></div>
+        </div>
+        <div class="stat-grid">
+            <div class="card stat-card"><div class="stat-value">${s.sessions||0}</div><div class="stat-label">Active Sessions</div></div>
+            <div class="card stat-card"><div class="stat-value" style="color:var(--success)">${s.success||0}</div><div class="stat-label">Successful Loads</div></div>
+            <div class="card stat-card"><div class="stat-value" style="color:var(--danger)">${s.bans||0}</div><div class="stat-label">Total Bans</div></div>
+            <div class="card stat-card"><div class="stat-value" style="color:var(--warning)">${s.challenges||0}</div><div class="stat-label">Challenges</div></div>
+        </div>
+        <div class="content-grid">
+            <div class="card">
+                <div class="card-header"><span class="card-title">Recent Activity</span></div>
+                <div id="recentLogs" style="padding:16px"><div class="spinner"></div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">Quick Actions</span></div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+                    <button class="btn btn-secondary" onclick="App.nav('sessions')">Manage Sessions</button>
+                    <button class="btn btn-secondary" onclick="App.nav('bans')">Manage Bans</button>
+                    <button class="btn btn-danger" onclick="Dashboard.clearCache()">Clear Script Cache</button>
+                </div>
+            </div>
+        </div>`;
+    },
+    async init(){
+        const r=await API.get('/api/admin/logs',{limit:5});
+        document.getElementById('recentLogs').innerHTML=(r.logs||[]).map(l=>`
+            <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:8px 0;font-size:13px">
+                <div><span style="color:${l.success?'var(--success)':'var(--danger)'}">●</span> ${Utils.esc(l.action)}</div>
+                <div style="color:#666">${Utils.trunc(l.ip,12)}</div>
+            </div>`).join('')||'<p style="text-align:center">No activity</p>';
+    },
+    async clearCache(){if(confirm('Clear cache?')){await API.post('/api/admin/cache/clear');Utils.toast('Cache cleared','success')}}
 };
-const Bans={
-list:[],
-async init(){await this.load()},
-async load(){const r=await API.get('/api/admin/bans');this.list=r.success?r.bans||[]:[];this.renderTable()},
-renderTable(){const t=document.getElementById('bansTable');if(!t)return;if(this.list.length===0){t.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;color:#666">No bans</td></tr>';return}t.innerHTML=this.list.map(b=>`<tr><td><code>${Utils.truncate(b.banId,10)}</code></td><td>${Utils.truncate(b.hwid||b.playerId||b.ip||'?',16)}</td><td>${Utils.escapeHtml(Utils.truncate(b.reason||'-',20))}</td><td>${Utils.formatDate(b.ts)}</td><td><button class="btn btn-danger btn-sm" onclick="Bans.remove('${b.banId}')">🗑️</button></td></tr>`).join('')},
-async remove(id){if(confirm('Remove?')){const r=await API.delete('/api/admin/bans/'+id);this.load();Utils.toast('Removed','success')}},
-async add(){const h=document.getElementById('banHwid')?.value?.trim();const u=document.getElementById('banUserId')?.value?.trim();const i=document.getElementById('banIp')?.value?.trim();const r=document.getElementById('banReason')?.value?.trim()||'Manual';if(!h&&!u&&!i){Utils.toast('Enter at least one field','error');return}const res=await API.post('/api/admin/bans',{hwid:h||undefined,playerId:u?parseInt(u):undefined,ip:i||undefined,reason:r});if(res.success){Utils.toast('Added','success');this.closeModal();this.load()}else{Utils.toast(res.error||'Failed','error')}},
-openModal(){document.getElementById('banHwid').value='';document.getElementById('banUserId').value='';document.getElementById('banIp').value='';document.getElementById('banReason').value='Manual ban';document.getElementById('banModal').classList.add('active')},
-closeModal(){document.getElementById('banModal').classList.remove('active')},
-render(){return`<div class="page-header"><div><h1 class="page-title">🚫 Bans</h1><p class="page-subtitle">Blocked users cannot load script</p></div><div class="actions-row"><button class="btn btn-secondary" onclick="Bans.load();Utils.toast('Refreshed','success')">↻</button><button class="btn btn-primary" onclick="Bans.openModal()">➕ Add Ban</button></div></div><div class="card"><div class="table-container"><table class="table"><thead><tr><th>ID</th><th>Target</th><th>Reason</th><th>Date</th><th>Act</th></tr></thead><tbody id="bansTable"><tr><td colspan="5" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr></tbody></table></div></div><div class="modal-overlay" id="banModal"><div class="modal"><div class="modal-header"><span class="modal-title">➕ Add Ban</span><button class="modal-close" onclick="Bans.closeModal()">✕</button></div><div class="modal-body"><div class="form-group"><label class="form-label">HWID</label><input class="form-input" id="banHwid" placeholder="Optional"></div><div class="form-group"><label class="form-label">User ID</label><input class="form-input" id="banUserId" type="number" placeholder="Optional"></div><div class="form-group"><label class="form-label">IP</label><input class="form-input" id="banIp" placeholder="Optional"></div><div class="form-group"><label class="form-label">Reason</label><input class="form-input" id="banReason" value="Manual ban"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="Bans.closeModal()">Cancel</button><button class="btn btn-danger" onclick="Bans.add()">🚫 Ban</button></div></div></div>`}
-};
-const Logs={
-async init(){await this.load()},
-async load(){const r=await API.get('/api/admin/logs',{limit:50});const t=document.getElementById('logsTable');if(!t)return;if(!r.success||!r.logs?.length){t.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;color:#666">No logs</td></tr>';return}t.innerHTML=r.logs.map(l=>`<tr><td>${Utils.formatDate(l.ts)}</td><td>${Utils.escapeHtml(Utils.truncate(l.action,15))}</td><td><span class="badge ${l.client==='executor'?'badge-success':'badge-warning'}">${Utils.truncate(l.client,8)}</span></td><td><code style="font-size:11px">${Utils.truncate(l.ip,12)}</code></td><td><span class="badge ${l.success?'badge-success':'badge-danger'}">${l.success?'OK':'FAIL'}</span></td></tr>`).join('')},
-render(){return`<div class="page-header"><div><h1 class="page-title">📋 Logs</h1><p class="page-subtitle">Activity history</p></div><button class="btn btn-secondary" onclick="Logs.load();Utils.toast('Refreshed','success')">↻ Refresh</button></div><div class="card"><div class="table-container"><table class="table"><thead><tr><th>Time</th><th>Action</th><th>Client</th><th>IP</th><th>Status</th></tr></thead><tbody id="logsTable"><tr><td colspan="5" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr></tbody></table></div></div>`}
-};
+
 const Sessions={
-list:[],
-async init(){await this.load()},
-async load(){const r=await API.get('/api/admin/sessions');this.list=r.success?r.sessions||[]:[];this.renderTable()},
-renderTable(){const t=document.getElementById('sessionsTable');if(!t)return;const c=document.getElementById('sessionCount');if(c)c.textContent=this.list.length;if(this.list.length===0){t.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;color:#666">No sessions</td></tr>';return}t.innerHTML=this.list.map(s=>`<tr><td><code style="font-size:11px">${Utils.truncate(s.sessionId,8)}</code></td><td>${s.userId||'?'}</td><td><code style="font-size:11px">${Utils.truncate(s.hwid,10)}</code></td><td><code style="font-size:11px">${Utils.truncate(s.ip,12)}</code></td><td><div style="display:flex;gap:4px"><button class="btn btn-warning btn-sm" onclick="Sessions.openSuspend('${s.sessionId}','${s.userId||''}','${s.hwid||''}')">⏸️</button><button class="btn btn-danger btn-sm" onclick="Sessions.kill('${s.sessionId}')">💀</button></div></td></tr>`).join('')},
-async kill(id){if(confirm('Kill session?')){await API.post('/api/admin/kill-session',{sessionId:id});this.load();Utils.toast('Killed','success')}},
-openSuspend(sid,uid,hwid){Suspended.openModal('session',sid,uid,hwid)},
-render(){return`<div class="page-header"><div><h1 class="page-title">👥 Sessions</h1><p class="page-subtitle">Active: <span id="sessionCount">0</span></p></div><button class="btn btn-secondary" onclick="Sessions.load();Utils.toast('Refreshed','success')">↻ Refresh</button></div><div class="card"><div class="table-container"><table class="table"><thead><tr><th>Session</th><th>User</th><th>HWID</th><th>IP</th><th>Actions</th></tr></thead><tbody id="sessionsTable"><tr><td colspan="5" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr></tbody></table></div></div>`}
+    async render(){
+        const r=await API.get('/api/admin/sessions');
+        const list=r.sessions||[];
+        return `
+        <div class="page-header">
+            <div class="page-title"><h1>Sessions</h1><p>${list.length} Active Users</p></div>
+            <div class="page-actions">
+                <button class="btn btn-secondary" onclick="App.nav('sessions')">${ICONS.refresh} Refresh</button>
+                <button class="btn btn-danger" onclick="Sessions.killAll()">${ICONS.kill} Kill All</button>
+            </div>
+        </div>
+        <div class="card table-container">
+            <table class="table">
+                <thead><tr><th>ID</th><th>User</th><th>HWID</th><th>IP</th><th>Action</th></tr></thead>
+                <tbody>${list.map(s=>`<tr>
+                    <td><code>${Utils.trunc(s.sessionId,8)}</code></td>
+                    <td>${s.userId||'-'}</td>
+                    <td><code>${Utils.trunc(s.hwid,10)}</code></td>
+                    <td>${Utils.trunc(s.ip,12)}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="Sessions.suspend('${s.sessionId}')">${ICONS.pause}</button>
+                        <button class="btn btn-danger btn-sm" onclick="Sessions.kill('${s.sessionId}')">${ICONS.kill}</button>
+                    </td>
+                </tr>`).join('') || '<tr><td colspan="5" style="text-align:center">No sessions</td></tr>'}</tbody>
+            </table>
+        </div>`;
+    },
+    async kill(sid){if(confirm('Kill?')){await API.post('/api/admin/kill-session',{sessionId:sid});App.nav('sessions')}},
+    async killAll(){if(confirm('Kill ALL?')){await API.post('/api/admin/sessions/clear');App.nav('sessions')}},
+    suspend(sid){
+        App.openModal('Suspend Session', `
+            <div class="form-group"><label class="form-label">Duration (sec, empty=perm)</label><input id="suspDur" class="form-input" type="number"></div>
+            <div class="form-group"><label class="form-label">Reason</label><input id="suspRes" class="form-input" value="Suspended by admin"></div>
+        `, `<button class="btn btn-warning" onclick="Suspended.doAdd('session','${sid}')">Suspend</button>`);
+    }
 };
+
+const Bans={
+    async render(){
+        const r=await API.get('/api/admin/bans');
+        const list=r.bans||[];
+        return `
+        <div class="page-header">
+            <div class="page-title"><h1>Bans</h1><p>Blocked Users</p></div>
+            <div class="page-actions">
+                <button class="btn btn-secondary" onclick="App.nav('bans')">${ICONS.refresh}</button>
+                <button class="btn btn-primary" onclick="Bans.modal()">${ICONS.add} Ban</button>
+            </div>
+        </div>
+        <div class="card table-container">
+            <table class="table">
+                <thead><tr><th>Target</th><th>Reason</th><th>Date</th><th>Action</th></tr></thead>
+                <tbody>${list.map(b=>`<tr>
+                    <td><code>${Utils.trunc(b.hwid||b.playerId||b.ip, 20)}</code></td>
+                    <td>${Utils.trunc(b.reason)}</td>
+                    <td>${Utils.fmtDate(b.ts)}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="Bans.del('${b.banId}')">${ICONS.trash}</button></td>
+                </tr>`).join('') || '<tr><td colspan="4" style="text-align:center">No bans</td></tr>'}</tbody>
+            </table>
+        </div>`;
+    },
+    async del(id){if(confirm('Unban?')){await API.delete('/api/admin/bans/'+id);App.nav('bans')}},
+    modal(){
+        App.openModal('Add Ban', `
+            <div class="form-group"><label class="form-label">HWID / UserID / IP</label><input id="banVal" class="form-input"></div>
+            <div class="form-group"><label class="form-label">Reason</label><input id="banRes" class="form-input" value="Manual Ban"></div>
+        `, `<button class="btn btn-danger" onclick="Bans.add()">Ban User</button>`);
+    },
+    async add(){
+        const v=document.getElementById('banVal').value;
+        const r=document.getElementById('banRes').value;
+        if(!v)return;
+        await API.post('/api/admin/bans',{hwid:v,reason:r}); // Simplified, backend handles detection
+        App.closeModal();App.nav('bans');
+    }
+};
+
 const Suspended={
-list:[],
-async init(){await this.load()},
-async load(){const r=await API.get('/api/admin/suspended');this.list=r.success?r.suspended||[]:[];this.renderTable()},
-renderTable(){const t=document.getElementById('suspendedTable');if(!t)return;const c=document.getElementById('suspendedCount');if(c)c.textContent=this.list.length;if(this.list.length===0){t.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;color:#666">No suspended users</td></tr>';return}t.innerHTML=this.list.map(s=>`<tr><td><span class="badge ${s.type==='userId'?'badge-info':s.type==='hwid'?'badge-purple':'badge-warning'}">${s.type}</span></td><td><code>${Utils.truncate(s.value,16)}</code></td><td>${Utils.escapeHtml(Utils.truncate(s.reason||'-',20))}</td><td>${s.expiresAt?Utils.formatDate(s.expiresAt):'<span class="badge badge-danger">Permanent</span>'}</td><td><button class="btn btn-success btn-sm" onclick="Suspended.remove('${s.type}','${s.value}')">✓</button></td></tr>`).join('')},
-async remove(type,value){if(confirm('Unsuspend?')){const r=await API.post('/api/admin/unsuspend',{type,value});if(r.success){Utils.toast('Unsuspended','success');this.load()}else{Utils.toast(r.error||'Failed','error')}}},
-async add(){const type=document.getElementById('suspendType').value;const value=document.getElementById('suspendValue').value.trim();const reason=document.getElementById('suspendReason').value.trim()||'Suspended by admin';const durVal=document.getElementById('suspendDuration').value.trim();const duration=durVal?parseInt(durVal):null;if(!value){Utils.toast('Enter value','error');return}const r=await API.post('/api/admin/suspend',{type,value,reason,duration});if(r.success){Utils.toast(r.msg||'Suspended','success');this.closeModal();this.load()}else{Utils.toast(r.error||'Failed','error')}},
-openModal(type='userId',value='',uid='',hwid=''){document.getElementById('suspendType').value=type;document.getElementById('suspendValue').value=value;document.getElementById('suspendReason').value='';document.getElementById('suspendDuration').value='';const info=document.getElementById('suspendInfo');if(info)info.innerHTML=uid||hwid?`<strong>User:</strong> ${uid||'N/A'} | <strong>HWID:</strong> ${Utils.truncate(hwid||'N/A',12)}`:'';info.style.display=(uid||hwid)?'block':'none';document.getElementById('suspendModal').classList.add('active')},
-closeModal(){document.getElementById('suspendModal').classList.remove('active')},
-render(){return`<div class="page-header"><div><h1 class="page-title">⏸️ Suspended</h1><p class="page-subtitle">Count: <span id="suspendedCount">0</span></p></div><div class="actions-row"><button class="btn btn-secondary" onclick="Suspended.load()">↻</button><button class="btn btn-warning" onclick="Suspended.openModal()">➕ Add</button></div></div><div class="info-box"><p style="margin:0;font-size:14px;color:#888">💡 <strong>Suspend vs Ban:</strong> Banned users blocked at login. Suspended users can load but get kicked via heartbeat.</p></div><div class="card"><div class="table-container"><table class="table"><thead><tr><th>Type</th><th>Value</th><th>Reason</th><th>Expires</th><th>Act</th></tr></thead><tbody id="suspendedTable"><tr><td colspan="5" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr></tbody></table></div></div><div class="modal-overlay" id="suspendModal"><div class="modal"><div class="modal-header"><span class="modal-title">⏸️ Suspend User</span><button class="modal-close" onclick="Suspended.closeModal()">✕</button></div><div class="modal-body"><div id="suspendInfo" class="info-box" style="display:none"></div><div class="form-group"><label class="form-label">Type</label><select class="form-input" id="suspendType"><option value="userId">User ID</option><option value="hwid">HWID</option><option value="session">Session ID</option></select></div><div class="form-group"><label class="form-label">Value</label><input class="form-input" id="suspendValue" placeholder="Enter value"></div><div class="form-group"><label class="form-label">Reason</label><input class="form-input" id="suspendReason" placeholder="Optional"></div><div class="form-group"><label class="form-label">Duration (seconds)</label><input class="form-input" id="suspendDuration" type="number" placeholder="Empty = permanent"><p class="form-help">3600=1h, 86400=1d, 604800=1w</p></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="Suspended.closeModal()">Cancel</button><button class="btn btn-warning" onclick="Suspended.add()">⏸️ Suspend</button></div></div></div>`}
+    async render(){
+        const r=await API.get('/api/admin/suspended');
+        const list=r.suspended||[];
+        return `
+        <div class="page-header">
+            <div class="page-title"><h1>Suspended</h1><p>Temporarily Disabled</p></div>
+            <div class="page-actions"><button class="btn btn-primary" onclick="Suspended.modal()">${ICONS.add} Suspend</button></div>
+        </div>
+        <div class="card table-container">
+            <table class="table">
+                <thead><tr><th>Type</th><th>Value</th><th>Expires</th><th>Action</th></tr></thead>
+                <tbody>${list.map(s=>`<tr>
+                    <td><span class="badge badge-info">${s.type}</span></td>
+                    <td><code>${Utils.trunc(s.value,15)}</code></td>
+                    <td>${s.expiresAt?Utils.fmtDate(s.expiresAt):'Permanent'}</td>
+                    <td><button class="btn btn-success btn-sm" onclick="Suspended.del('${s.type}','${s.value}')">${ICONS.play} Unsuspend</button></td>
+                </tr>`).join('')}</tbody>
+            </table>
+        </div>`;
+    },
+    async del(t,v){if(confirm('Unsuspend?')){await API.post('/api/admin/unsuspend',{type:t,value:v});App.nav('suspended')}},
+    modal(){
+        App.openModal('Add Suspend', `
+            <div class="form-group"><label class="form-label">Type</label><select id="suspType" class="form-select"><option value="userId">User ID</option><option value="hwid">HWID</option></select></div>
+            <div class="form-group"><label class="form-label">Value</label><input id="suspVal" class="form-input"></div>
+            <div class="form-group"><label class="form-label">Duration (sec)</label><input id="suspDur" class="form-input" type="number" placeholder="Empty = Permanent"></div>
+        `, `<button class="btn btn-warning" onclick="Suspended.add()">Suspend</button>`);
+    },
+    async add(){
+        const t=document.getElementById('suspType').value;
+        const v=document.getElementById('suspVal').value;
+        this.doAdd(t,v);
+    },
+    async doAdd(t,v){
+        const d=document.getElementById('suspDur').value;
+        const r=document.getElementById('suspRes')?.value;
+        await API.post('/api/admin/suspend',{type:t,value:v,duration:d,reason:r});
+        App.closeModal();App.nav('suspended');
+    }
 };
+
 const Whitelist={
-data:{userIds:[],hwids:[],ips:[]},
-async init(){await this.load()},
-async load(){const r=await API.get('/api/admin/whitelist');if(r.success)this.data=r.whitelist||{userIds:[],hwids:[],ips:[]};this.renderTable()},
-renderTable(){const t=document.getElementById('whitelistTable');if(!t)return;const all=[...(this.data.userIds||[]).map(v=>({type:'userId',value:String(v)})),...(this.data.hwids||[]).map(v=>({type:'hwid',value:String(v)})),...(this.data.ips||[]).map(v=>({type:'ip',value:String(v)}))];if(all.length===0){t.innerHTML='<tr><td colspan="3" style="text-align:center;padding:40px;color:#666">Empty</td></tr>';return}t.innerHTML=all.map(w=>`<tr><td><span class="badge ${w.type==='userId'?'badge-info':w.type==='hwid'?'badge-purple':'badge-success'}">${w.type}</span></td><td><code>${Utils.escapeHtml(w.value)}</code></td><td><button class="btn btn-danger btn-sm" onclick="Whitelist.remove('${w.type}','${Utils.escapeHtml(w.value)}')">🗑️</button></td></tr>`).join('')},
-async remove(type,value){if(!confirm('Remove?'))return;const r=await API.post('/api/admin/whitelist/remove',{type,value});if(r.success){Utils.toast('Removed','success');this.load()}else{Utils.toast(r.error||'Failed','error')}},
-async add(){const type=document.getElementById('wlType').value;const value=document.getElementById('wlValue').value.trim();if(!value){Utils.toast('Enter value','error');return}const r=await API.post('/api/admin/whitelist',{type,value});if(r.success){Utils.toast('Added','success');this.closeModal();this.load()}else{Utils.toast(r.error||'Failed','error')}},
-openModal(){document.getElementById('wlType').value='userId';document.getElementById('wlValue').value='';document.getElementById('wlModal').classList.add('active')},
-closeModal(){document.getElementById('wlModal').classList.remove('active')},
-render(){return`<div class="page-header"><div><h1 class="page-title">⭐ Whitelist</h1><p class="page-subtitle">Bypass protection</p></div><div class="actions-row"><button class="btn btn-secondary" onclick="Whitelist.load()">↻</button><button class="btn btn-primary" onclick="Whitelist.openModal()">➕ Add</button></div></div><div class="card"><div class="table-container"><table class="table"><thead><tr><th>Type</th><th>Value</th><th>Act</th></tr></thead><tbody id="whitelistTable"><tr><td colspan="3" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr></tbody></table></div></div><div class="modal-overlay" id="wlModal"><div class="modal"><div class="modal-header"><span class="modal-title">➕ Add Whitelist</span><button class="modal-close" onclick="Whitelist.closeModal()">✕</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Type</label><select class="form-input" id="wlType"><option value="userId">User ID</option><option value="hwid">HWID</option><option value="ip">IP Address</option></select></div><div class="form-group"><label class="form-label">Value</label><input class="form-input" id="wlValue" placeholder="Enter value"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="Whitelist.closeModal()">Cancel</button><button class="btn btn-primary" onclick="Whitelist.add()">➕ Add</button></div></div></div>`}
+    async render(){
+        const r=await API.get('/api/admin/whitelist');
+        const w=r.whitelist||{};
+        const list=[...(w.userIds||[]).map(v=>({t:'userId',v})),...(w.hwids||[]).map(v=>({t:'hwid',v})),...(w.ips||[]).map(v=>({t:'ip',v}))];
+        return `
+        <div class="page-header">
+            <div class="page-title"><h1>Whitelist</h1><p>Bypass Protection</p></div>
+            <div class="page-actions"><button class="btn btn-primary" onclick="Whitelist.modal()">${ICONS.add} Add</button></div>
+        </div>
+        <div class="card table-container">
+            <table class="table">
+                <thead><tr><th>Type</th><th>Value</th><th>Action</th></tr></thead>
+                <tbody>${list.map(i=>`<tr><td>${i.t}</td><td><code>${i.v}</code></td><td><button class="btn btn-danger btn-sm" onclick="Whitelist.del('${i.t}','${i.v}')">${ICONS.trash}</button></td></tr>`).join('')}</tbody>
+            </table>
+        </div>`;
+    },
+    async del(t,v){if(confirm('Remove?')){await API.post('/api/admin/whitelist/remove',{type:t,value:v});App.nav('whitelist')}},
+    modal(){
+        App.openModal('Add Whitelist', `
+            <div class="form-group"><label class="form-label">Type</label><select id="wlType" class="form-select"><option value="userId">User ID</option><option value="hwid">HWID</option><option value="ip">IP</option></select></div>
+            <div class="form-group"><label class="form-label">Value</label><input id="wlVal" class="form-input"></div>
+        `, `<button class="btn btn-primary" onclick="Whitelist.add()">Add</button>`);
+    },
+    async add(){
+        const t=document.getElementById('wlType').value;
+        const v=document.getElementById('wlVal').value;
+        if(v){await API.post('/api/admin/whitelist',{type:t,value:v});App.closeModal();App.nav('whitelist')}
+    }
 };
-const Settings={render(){return`<div class="page-header"><div><h1 class="page-title">⚙️ Settings</h1></div></div><div class="card" style="padding:24px;margin-bottom:16px"><h3 style="margin:0 0 16px">🔑 Authentication</h3><p style="color:#888">Key: <code>${Utils.truncate(API.getKey(),8)}...</code></p><button class="btn btn-danger" onclick="Auth.logout()">🚪 Logout</button></div><div class="card" style="padding:24px"><h3 style="margin:0 0 16px">📋 Loader</h3><div style="background:#0a0a0f;padding:16px;border-radius:8px;margin-bottom:12px;word-break:break-all"><code>loadstring(game:HttpGet("${CONFIG.API_BASE}/loader"))()</code></div><button class="btn btn-primary" onclick="Dashboard.copyLoader()">📋 Copy</button></div>`}};
+
+const Settings={
+    render(){
+        return `
+        <div class="page-header"><div class="page-title"><h1>Settings</h1></div></div>
+        <div class="card" style="padding:24px">
+            <h3>Loader Script</h3>
+            <p style="margin-bottom:16px;font-size:13px">Copy this into your executor:</p>
+            <code style="display:block;padding:16px;background:#000;border:1px solid var(--border);border-radius:8px;word-break:break-all">loadstring(game:HttpGet("${CONFIG.API_BASE}/loader"))()</code>
+        </div>`;
+    }
+};
+
+const Logs={
+    async render(){
+        const r=await API.get('/api/admin/logs',{limit:50});
+        return `
+        <div class="page-header">
+            <div class="page-title"><h1>Logs</h1></div>
+            <div class="page-actions"><button class="btn btn-secondary" onclick="App.nav('logs')">${ICONS.refresh} Refresh</button></div>
+        </div>
+        <div class="card table-container">
+            <table class="table">
+                <thead><tr><th>Time</th><th>Action</th><th>IP</th><th>Status</th></tr></thead>
+                <tbody>${(r.logs||[]).map(l=>`<tr>
+                    <td>${Utils.fmtDate(l.ts)}</td>
+                    <td>${Utils.esc(l.action)}</td>
+                    <td><code>${Utils.trunc(l.ip,12)}</code></td>
+                    <td>${l.success?'<span class="badge badge-success">OK</span>':'<span class="badge badge-danger">FAIL</span>'}</td>
+                </tr>`).join('')}</tbody>
+            </table>
+        </div>`;
+    }
+};
+
+// === CORE APP ===
 const App={
-currentPage:'dashboard',
-async init(){this.bindLogin();const btn=document.getElementById('loginBtn');if(btn){btn.disabled=true;btn.textContent='Checking...';}const ok=await Auth.check();if(btn){btn.disabled=false;btn.textContent='🚀 Login';}if(ok)this.showDashboard();else this.showLogin()},
-bindLogin(){const btn=document.getElementById('loginBtn');const input=document.getElementById('adminKeyInput');if(btn)btn.onclick=()=>this.login();if(input)input.onkeypress=e=>{if(e.key==='Enter')this.login()}},
-async login(){const input=document.getElementById('adminKeyInput');const btn=document.getElementById('loginBtn');const err=document.getElementById('loginError');const errText=document.getElementById('loginErrorText');const key=input?.value||'';if(!key){if(errText)errText.textContent='Enter key';if(err)err.classList.remove('hidden');return}if(err)err.classList.add('hidden');if(btn){btn.disabled=true;btn.textContent='⏳';}const r=await Auth.login(key);if(r.success){if(btn)btn.textContent='✅';setTimeout(()=>this.showDashboard(),300)}else{if(errText)errText.textContent=r.error||'Failed';if(err)err.classList.remove('hidden');if(btn){btn.disabled=false;btn.textContent='🚀 Login'}}},
-showLogin(){document.getElementById('loginScreen')?.classList.remove('hidden');document.getElementById('dashboardScreen')?.classList.add('hidden');document.getElementById('adminKeyInput')?.focus()},
-showDashboard(){document.getElementById('loginScreen')?.classList.add('hidden');document.getElementById('dashboardScreen')?.classList.remove('hidden');this.bindNav();this.navigate('dashboard')},
-bindNav(){document.querySelectorAll('.nav-item[data-page]').forEach(el=>{el.onclick=()=>{this.navigate(el.dataset.page);if(window.innerWidth<=768)toggleSidebar()}})},
-navigate(page){this.currentPage=page;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));const c=document.getElementById('pageContent');if(!c)return;c.innerHTML='<div style="text-align:center;padding:3.75rem"><div class="spinner"></div></div>';setTimeout(()=>{switch(page){case'dashboard':c.innerHTML=Dashboard.render();Dashboard.init();break;case'bans':c.innerHTML=Bans.render();Bans.init();break;case'logs':c.innerHTML=Logs.render();Logs.init();break;case'sessions':c.innerHTML=Sessions.render();Sessions.init();break;case'suspended':c.innerHTML=Suspended.render();Suspended.init();break;case'whitelist':c.innerHTML=Whitelist.render();Whitelist.init();break;case'settings':c.innerHTML=Settings.render();break;default:c.innerHTML=Dashboard.render();Dashboard.init()}
-if(page==='bans')Bans.openModal=()=>{document.getElementById('banHwid').value='';document.getElementById('banUserId').value='';document.getElementById('banIp').value='';document.getElementById('banReason').value='Manual ban';document.getElementById('banModal').classList.add('active')};
-if(page==='whitelist')Whitelist.openModal=()=>{document.getElementById('wlType').value='userId';document.getElementById('wlValue').value='';document.getElementById('wlModal').classList.add('active')};
-if(page==='suspended')Suspended.openModal=()=>{document.getElementById('suspendType').value='userId';document.getElementById('suspendValue').value='';document.getElementById('suspendReason').value='';document.getElementById('suspendDuration').value='';document.getElementById('suspendInfo').style.display='none';document.getElementById('suspendModal').classList.add('active')};
-},50)}
+    async init(){
+        this.bindEvents();
+        if(localStorage.getItem('ak')){
+            if(await Auth.check()) this.showDash();
+            else document.getElementById('loginScreen').style.display='flex';
+        } else {
+            document.getElementById('loginScreen').style.display='flex';
+        }
+    },
+    bindEvents(){
+        document.getElementById('loginBtn').onclick=Auth.login;
+        document.querySelectorAll('.nav-item').forEach(el=>{
+            el.onclick=()=>{
+                if(window.innerWidth<=768) this.toggleSidebar();
+                this.nav(el.dataset.page);
+            }
+        });
+    },
+    toggleSidebar(){
+        document.querySelector('.sidebar').classList.toggle('open');
+        document.querySelector('.sidebar-overlay').classList.toggle('active');
+    },
+    showDash(){
+        document.getElementById('loginScreen').style.display='none';
+        document.getElementById('dashboardScreen').classList.remove('hidden');
+        this.nav('dashboard');
+    },
+    async nav(page){
+        document.querySelectorAll('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.page===page));
+        const c=document.getElementById('pageContent');
+        c.innerHTML='<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+        
+        let html='';
+        if(page==='dashboard') { html=await Dashboard.render(); await Dashboard.init(); }
+        else if(page==='sessions') html=await Sessions.render();
+        else if(page==='bans') html=await Bans.render();
+        else if(page==='suspended') html=await Suspended.render();
+        else if(page==='whitelist') html=await Whitelist.render();
+        else if(page==='logs') html=await Logs.render();
+        else if(page==='settings') html=Settings.render();
+        
+        c.innerHTML=html;
+    },
+    openModal(title, body, footer){
+        document.getElementById('modalTitle').innerText=title;
+        document.getElementById('modalBody').innerHTML=body;
+        document.getElementById('modalFooter').innerHTML=footer;
+        document.getElementById('generalModal').classList.add('active');
+    },
+    closeModal(){
+        document.getElementById('generalModal').classList.remove('active');
+    }
 };
+
 document.addEventListener('DOMContentLoaded',()=>App.init());
 </script>
 </body>
