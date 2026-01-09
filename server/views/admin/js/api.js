@@ -147,8 +147,8 @@ const API = {
     },
     
     // DELETE request
-    async delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
+    async delete(endpoint,body=null){
+        return this.request(endpoint,{method:'DELETE',body:body?JSON.stringify(body):null});
     },
     
     // ===== Specific API Methods =====
