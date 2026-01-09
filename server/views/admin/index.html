@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"> <!-- Added user-scalable=no -->
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Admin Panel</title>
 <style>
 /* Base Reset & Typography */
-html{font-size:16px} /* Default font size */
+html{font-size:16px}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;overflow-x:hidden}
 h1,h2,h3,h4{margin:0;padding:0;font-weight:600}
@@ -26,7 +26,7 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 .stat-value{font-size:1.75rem;font-weight:700}
 .stat-label{color:#666;font-size:0.875rem}
 .content-grid{display:grid;grid-template-columns:2fr 1fr;gap:1rem}
-.actions-row{display:flex;gap:0.75rem;flex-wrap:wrap}
+.actions-row{display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:flex-end} /* Added justify-content:flex-end */
 .info-box{background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:0.5rem;padding:1rem;margin-bottom:1rem;font-size:0.875rem}
 
 /* Buttons */
@@ -77,7 +77,9 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 .page-subtitle{color:#666;margin:0.25rem 0 0}
 
 /* Tables */
-.table-container{overflow-x:auto} /* Allow horizontal scroll for tables */
+.table-container{overflow-x:auto; /* Crucial for horizontal scrolling */
+-webkit-overflow-scrolling: touch; /* Improves scrolling performance on iOS */
+margin-bottom: 1rem; /* Space below table */}
 .table{width:100%;border-collapse:collapse;min-width:650px} /* min-width to force scroll on smaller screens */
 .table th,.table td{padding:0.75rem 1rem;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}
 .table th{font-size:0.75rem;color:#888;text-transform:uppercase;font-weight:600;white-space:nowrap}
@@ -110,14 +112,14 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 .content-grid{grid-template-columns:1fr}
 .main-content{margin-left:0} /* Reset margin-left for content when sidebar is hidden */
 }
-@media(max-width:768px){ /* Tablet and small screens */
+@media(max-width:768px){ /* Tablet and small phones */
 html{font-size:14px} /* Smaller base font size for better scaling */
 .mobile-menu{display:flex;align-items:center;justify-content:center}
 .sidebar{transform:translateX(-100%);padding-top:4.375rem} /* Adjust padding for mobile menu */
 .sidebar.open{transform:translateX(0)}
 .sidebar-overlay.open{display:block}
 .main-content{margin-left:0;padding:1rem;padding-top:4.375rem} /* Adjust padding for mobile menu */
-.page-header{flex-direction:column;align-items:flex-start}
+.page-header{flex-direction:column;align-items:flex-start;gap:0.5rem} /* Reduced gap */
 .page-title{font-size:1.5rem} /* Smaller title on mobile */
 .stat-grid{grid-template-columns:1fr 1fr}
 .stat-card{padding:1rem}
@@ -128,8 +130,10 @@ html{font-size:14px} /* Smaller base font size for better scaling */
 .form-input,.form-select{padding:0.625rem 0.75rem;font-size:0.8125rem}
 .modal{max-width:95%}
 .login-box{padding:2rem}
+.table-container{margin-bottom:0.5rem} /* Smaller margin below table */
+.table{min-width:550px} /* Adjust min-width for table to prevent excessive cutting */
 }
-@media(max-width:480px){ /* Mobile phones */
+@media(max-width:480px){ /* Smaller mobile phones */
 html{font-size:12px} /* Even smaller base font size */
 .stat-grid{grid-template-columns:1fr}
 .actions-row{flex-direction:column}
@@ -141,6 +145,8 @@ html{font-size:12px} /* Even smaller base font size */
 .mobile-menu{width:2.5rem;height:2.5rem;font-size:1.125rem;top:0.75rem;left:0.75rem}
 .sidebar{padding-top:3.75rem}
 .main-content{padding-top:3.75rem}
+.page-header{gap:0.25rem} /* Even smaller gap */
+.table{min-width:450px} /* Further adjust min-width */
 }
 </style>
 </head>
@@ -301,7 +307,7 @@ async login(){const input=document.getElementById('adminKeyInput');const btn=doc
 showLogin(){document.getElementById('loginScreen')?.classList.remove('hidden');document.getElementById('dashboardScreen')?.classList.add('hidden');document.getElementById('adminKeyInput')?.focus()},
 showDashboard(){document.getElementById('loginScreen')?.classList.add('hidden');document.getElementById('dashboardScreen')?.classList.remove('hidden');this.bindNav();this.navigate('dashboard')},
 bindNav(){document.querySelectorAll('.nav-item[data-page]').forEach(el=>{el.onclick=()=>{this.navigate(el.dataset.page);if(window.innerWidth<=768)toggleSidebar()}})},
-navigate(page){this.currentPage=page;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));const c=document.getElementById('pageContent');if(!c)return;c.innerHTML='<div style="text-align:center;padding:60px"><div class="spinner"></div></div>';setTimeout(()=>{switch(page){case'dashboard':c.innerHTML=Dashboard.render();Dashboard.init();break;case'bans':c.innerHTML=Bans.render();Bans.init();break;case'logs':c.innerHTML=Logs.render();Logs.init();break;case'sessions':c.innerHTML=Sessions.render();Sessions.init();break;case'suspended':c.innerHTML=Suspended.render();Suspended.init();break;case'whitelist':c.innerHTML=Whitelist.render();Whitelist.init();break;case'settings':c.innerHTML=Settings.render();break;default:c.innerHTML=Dashboard.render();Dashboard.init()}
+navigate(page){this.currentPage=page;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));const c=document.getElementById('pageContent');if(!c)return;c.innerHTML='<div style="text-align:center;padding:3.75rem"><div class="spinner"></div></div>';setTimeout(()=>{switch(page){case'dashboard':c.innerHTML=Dashboard.render();Dashboard.init();break;case'bans':c.innerHTML=Bans.render();Bans.init();break;case'logs':c.innerHTML=Logs.render();Logs.init();break;case'sessions':c.innerHTML=Sessions.render();Sessions.init();break;case'suspended':c.innerHTML=Suspended.render();Suspended.init();break;case'whitelist':c.innerHTML=Whitelist.render();Whitelist.init();break;case'settings':c.innerHTML=Settings.render();break;default:c.innerHTML=Dashboard.render();Dashboard.init()}
 if(page==='bans')Bans.openModal=()=>{document.getElementById('banHwid').value='';document.getElementById('banUserId').value='';document.getElementById('banIp').value='';document.getElementById('banReason').value='Manual ban';document.getElementById('banModal').classList.add('active')};
 if(page==='whitelist')Whitelist.openModal=()=>{document.getElementById('wlType').value='userId';document.getElementById('wlValue').value='';document.getElementById('wlModal').classList.add('active')};
 if(page==='suspended')Suspended.openModal=()=>{document.getElementById('suspendType').value='userId';document.getElementById('suspendValue').value='';document.getElementById('suspendReason').value='';document.getElementById('suspendDuration').value='';document.getElementById('suspendInfo').style.display='none';document.getElementById('suspendModal').classList.add('active')};
