@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>Admin Panel | Script Shield</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/admin/css/main.css">
+    
+    <!-- Additional inline styles for elements not in CSS files -->
+    <style>
+        /* Page specific styles */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-8);
+            flex-wrap: wrap;
+            gap: var(--space-4);
+        }
+        
+        .page-title {
+            font-size: var(--text-3xl);
+            font-weight: 700;
+            margin-bottom: var(--space-1);
+        }
+        
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+            margin: 0;
+        }
+        
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+        
+        .btn-block {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        
+        /* Activity items */
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            transition: background var(--transition-fast);
+        }
+        
+        .activity-item:hover {
+            background: rgba(139, 92, 246, 0.05);
+        }
+        
+        .activity-item + .activity-item {
+            border-top: 1px solid var(--border-secondary);
+        }
+        
+        .activity-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: var(--text-sm);
+        }
+        
+        .activity-icon.success {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .activity-icon.danger {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+        
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .activity-title {
+            font-size: var(--text-sm);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .activity-meta {
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+        }
+        
+        /* Cell stack for multiple badges */
+        .cell-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-1);
+        }
+        
+        /* Table actions */
+        .table-actions {
+            display: flex;
+            gap: var(--space-2);
+        }
+        
+        /* Search input wrapper */
+        .search-input-wrapper {
+            position: relative;
+        }
+        
+        .search-input-wrapper .search-icon {
+            position: absolute;
+            left: var(--space-3);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+        
+        /* Toggle switch */
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            cursor: pointer;
+        }
+        
+        .toggle-input {
+            display: none;
+        }
+        
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-full);
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            width: 18px;
+            height: 18px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all var(--transition-fast);
+        }
+        
+        .toggle-input:checked + .toggle-switch {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .toggle-input:checked + .toggle-switch::after {
+            background: white;
+            left: calc(100% - 20px);
+        }
+        
+        /* Code block */
+        .code-block {
+            position: relative;
+            background: var(--bg-input);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            padding: var(--space-4);
+            padding-right: 100px;
+            overflow-x: auto;
+            border: none;
+            background: transparent;
+        }
+        
+        .code-block code {
+            background: transparent;
+            padding: 0;
+            color: var(--accent);
+        }
+        
+        .code-block .copy-code-btn {
+            position: absolute;
+            top: var(--space-2);
+            right: var(--space-2);
+        }
+        
+        /* Info list */
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--border-secondary);
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+        }
+        
+        .info-value {
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            font-family: var(--font-mono);
+        }
+        
+        /* Input with button */
+        .input-with-button {
+            display: flex;
+            gap: var(--space-2);
+        }
+        
+        .input-with-button .form-input {
+            flex: 1;
+        }
+        
+        /* Login screen */
+        .login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-6);
+            position: relative;
+        }
+        
+        .login-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-10);
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto var(--space-6);
+            box-shadow: var(--shadow-glow-lg);
+        }
+        
+        .login-title {
+            text-align: center;
+            font-size: var(--text-2xl);
+            margin-bottom: var(--space-2);
+        }
+        
+        .login-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+            margin-bottom: var(--space-8);
+        }
+        
+        .login-error {
+            background: var(--danger-bg);
+            color: var(--danger);
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-lg);
+            font-size: var(--text-sm);
+            margin-bottom: var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: var(--space-6);
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+        }
+        
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            display: none;
+        }
+        
+        @media (max-width: 1024px) {
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
+        
+        /* Sidebar overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: calc(var(--z-sticky) - 1);
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar.open + .sidebar-overlay {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Animation -->
+    <div class="bg-animation">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+    </div>
+    
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card animate-scaleIn">
+            <div class="login-logo">🛡️</div>
+            <h1 class="login-title">Welcome Back</h1>
+            <p class="login-subtitle">Enter your admin key to access the dashboard</p>
+            
+            <div class="login-error hidden" id="loginError">
+                <span>⚠️</span>
+                <span id="loginErrorText">Invalid admin key</span>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Admin Key</label>
+                <input 
+                    type="password" 
+                    id="adminKeyInput" 
+                    class="form-input" 
+                    placeholder="Enter your admin key..."
+                    autocomplete="off"
+                >
+            </div>
+            
+            <button class="btn btn-primary btn-lg" style="width: 100%; margin-top: var(--space-4);" id="loginBtn" onclick="App.login()">
+                🚀 Login
+            </button>
+            
+            <p class="login-footer">
+                Powered by Script Shield v1.0
+            </p>
+        </div>
+    </div>
+    
+    <!-- Dashboard Screen -->
+    <div class="app hidden" id="dashboardScreen">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🛡️</div>
+                <div class="sidebar-brand">
+                    <span class="sidebar-brand-name">Script Shield</span>
+                    <span class="sidebar-brand-tag">Admin Panel</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item active" data-page="dashboard">
+                        <span class="nav-item-icon">📊</span>
+                        <span class="nav-item-text">Dashboard</span>
+                    </div>
+                    <div class="nav-item" data-page="bans">
+                        <span class="nav-item-icon">🚫</span>
+                        <span class="nav-item-text">Ban Management</span>
+                    </div>
+                    <div class="nav-item" data-page="logs">
+                        <span class="nav-item-icon">📋</span>
+                        <span class="nav-item-text">Activity Logs</span>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">System</div>
+                    <div class="nav-item" data-page="settings">
+                        <span class="nav-item-icon">⚙️</span>
+                        <span class="nav-item-text">Settings</span>
+                    </div>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="nav-item" onclick="Auth.logout()">
+                    <span class="nav-item-icon">🚪</span>
+                    <span class="nav-item-text">Logout</span>
+                </div>
+            </div>
+        </aside>
+        <div class="sidebar-overlay" onclick="App.toggleSidebar()"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="btn btn-ghost btn-icon mobile-menu-btn" onclick="App.toggleSidebar()">
+                        ☰
+                    </button>
+                    <div class="header-breadcrumb">
+                        <span>Admin</span>
+                        <span>/</span>
+                        <span id="currentPageName">Dashboard</span>
+                    </div>
+                </div>
+                
+                <div class="header-right">
+                    <div class="header-actions">
+                        <button class="header-icon-btn" onclick="Dashboard.refresh()" title="Refresh">
+                            ↻
+                        </button>
+                    </div>
+                    
+                    <div class="header-profile">
+                        <div class="header-profile-avatar">A</div>
+                        <div class="header-profile-info">
+                            <span class="header-profile-name">Admin</span>
+                            <span class="header-profile-role">Administrator</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Page Content -->
+            <div class="page-content" id="pageContent">
+                <!-- Content will be rendered by JS -->
+                <div class="empty-state">
+                    <div class="spinner spinner-lg"></div>
+                    <p class="text-muted" style="margin-top: var(--space-4);">Loading...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="confirmTitle">Confirm</h3>
+                <button class="modal-close" onclick="document.getElementById('confirmModal').classList.remove('active')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage" class="text-secondary">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="confirmCancelBtn">Cancel</button>
+                <button class="btn btn-danger" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="/admin/js/config.js"></script>
+    <script src="/admin/js/api.js"></script>
+    <script src="/admin/js/auth.js"></script>
+    <script src="/admin/js/utils.js"></script>
+    <script src="/admin/js/dashboard.js"></script>
+    <script src="/admin/js/bans.js"></script>
+    <script src="/admin/js/logs.js"></script>
+    <script src="/admin/js/app.js"></script>
+</body>
+</html>
