@@ -166,9 +166,11 @@ app.post('/api/admin/sessions/clear',adminAuth,async(req,res)=>{const count=SESS
 
 // === ADMIN WHITELIST ===
 app.get('/api/admin/whitelist',adminAuth,async(req,res)=>{
+app.get('/api/admin/whitelist',adminAuth,async(req,res)=>{
 res.json({success:true,whitelist:{
 userIds:[...(config.WHITELIST_USER_IDS||[]),...Array.from(dynamicWhitelist.userIds)],
 hwids:[...(config.WHITELIST_HWIDS||[]),...Array.from(dynamicWhitelist.hwids)],
+ips:[...(config.WHITELIST_IPS||[]),...Array.from(dynamicWhitelist.ips)], // Tambah ini
 owners:config.OWNER_USER_IDS||[]
 }});
 });
@@ -176,20 +178,21 @@ owners:config.OWNER_USER_IDS||[]
 app.post('/api/admin/whitelist',adminAuth,async(req,res)=>{
 const{type,value}=req.body;
 if(!type||!value)return res.status(400).json({success:false,error:'Missing fields'});
-if(type==='userId'){dynamicWhitelist.userIds.add(parseInt(value))}
-else if(type==='hwid'){dynamicWhitelist.hwids.add(String(value))}
-else{return res.status(400).json({success:false,error:'Invalid type'})}
+if(type==='userId')dynamicWhitelist.userIds.add(parseInt(value));
+else if(type==='hwid')dynamicWhitelist.hwids.add(String(value));
+else if(type==='ip')dynamicWhitelist.ips.add(String(value)); // Tambah ini
+else return res.status(400).json({success:false,error:'Invalid type'});
 res.json({success:true,msg:`Added ${type}: ${value}`});
 });
 
 app.post('/api/admin/whitelist/remove',adminAuth,async(req,res)=>{
 const{type,value}=req.body;
 if(!type||!value)return res.status(400).json({success:false,error:'Missing fields'});
-if(type==='userId'){dynamicWhitelist.userIds.delete(parseInt(value))}
-else if(type==='hwid'){dynamicWhitelist.hwids.delete(String(value))}
+if(type==='userId')dynamicWhitelist.userIds.delete(parseInt(value));
+else if(type==='hwid')dynamicWhitelist.hwids.delete(String(value));
+else if(type==='ip')dynamicWhitelist.ips.delete(String(value)); // Tambah ini
 res.json({success:true,msg:`Removed ${type}: ${value}`});
 });
-
 // === ADMIN SUSPEND ===
 app.get('/api/admin/suspended',adminAuth,async(req,res)=>{
 const all=[];
