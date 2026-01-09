@@ -10,13 +10,14 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:14px}
 h1,h2,h3{font-weight:600;letter-spacing:-0.5px}
-code{font-family:monospace;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;color:#e2e8f0}
+code{font-family:monospace;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;color:#e2e8f0;white-space:nowrap}
 
 /* === UTILITIES === */
 .hidden{display:none!important}
 .spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.text-trunc{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom} /* Fixed truncated text */
 
 /* === LAYOUT === */
 .app{display:flex;min-height:100vh}
@@ -28,44 +29,40 @@ code{font-family:monospace;background:rgba(0,0,0,0.3);padding:2px 6px;border-rad
 .card-header{padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
 .card-title{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
 
-/* === COMPONENT: BUTTONS === */
+/* === BUTTONS === */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all 0.2s;text-decoration:none;user-select:none}
 .btn:active{transform:scale(0.98)}
 .btn-sm{padding:6px 12px;font-size:12px;height:32px}
 .btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(139,92,246,0.3)}
-.btn-primary:hover{background:var(--primary-hover)}
 .btn-secondary{background:rgba(255,255,255,0.08);color:#fff}
-.btn-secondary:hover{background:rgba(255,255,255,0.12)}
 .btn-danger{background:rgba(239,68,68,0.15);color:var(--danger)}
-.btn-danger:hover{background:rgba(239,68,68,0.25)}
 .btn-success{background:rgba(34,197,94,0.15);color:var(--success)}
-.btn-icon{padding:8px;width:36px;height:36px}
+.btn-warning{background:rgba(245,158,11,0.15);color:var(--warning)}
 
-/* === COMPONENT: INPUTS === */
+/* === INPUTS === */
 .form-group{margin-bottom:16px}
 .form-label{display:block;margin-bottom:6px;color:var(--text-muted);font-size:13px}
 .form-input,.form-select{width:100%;padding:10px 14px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:14px;transition:border-color 0.2s}
 .form-input:focus{outline:none;border-color:var(--primary)}
 
-/* === COMPONENT: TABLE === */
+/* === TABLE (Optimized) === */
 .table-container{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .table{width:100%;border-collapse:collapse;min-width:600px}
 .table th{text-align:left;padding:12px 16px;color:var(--text-muted);font-size:12px;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:600}
-.table td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px}
+.table td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px;white-space:nowrap} /* Prevent wrap */
 .table tr:last-child td{border-bottom:none}
 .table tr:hover td{background:rgba(255,255,255,0.02)}
 
-/* === COMPONENT: BADGE === */
-.badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;display:inline-block}
-.badge-success{background:rgba(34,197,94,0.15);color:var(--success)}
-.badge-danger{background:rgba(239,68,68,0.15);color:var(--danger)}
-.badge-warning{background:rgba(245,158,11,0.15);color:var(--warning)}
-.badge-info{background:rgba(59,130,246,0.15);color:#3b82f6}
-.badge-purple{background:rgba(139,92,246,0.15);color:var(--primary)}
+/* === DASHBOARD GRID === */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{padding:20px;display:flex;flex-direction:column}
+.stat-value{font-size:28px;font-weight:700;margin-bottom:4px}
+.stat-label{font-size:13px;color:var(--text-muted)}
+.content-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
 
 /* === PAGE HEADER === */
-.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
-.page-title h1{font-size:24px}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px}
+.page-title h1{font-size:24px;margin-bottom:4px}
 .page-actions{display:flex;gap:10px}
 
 /* === SIDEBAR === */
@@ -78,7 +75,7 @@ code{font-family:monospace;background:rgba(0,0,0,0.3);padding:2px 6px;border-rad
 .nav-section{font-size:11px;text-transform:uppercase;color:#555;padding:20px 24px 8px;font-weight:700;letter-spacing:0.5px}
 
 /* === LOGIN === */
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;position:fixed;inset:0;background:var(--bg);z-index:999}
 .login-card{width:100%;max-width:400px;padding:40px;text-align:center}
 
 /* === MOBILE NAV === */
@@ -105,14 +102,14 @@ code{font-family:monospace;background:rgba(0,0,0,0.3);padding:2px 6px;border-rad
     .page-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .page-actions .btn{width:100%}
     
-    .stat-grid{grid-template-columns:1fr 1fr!important}
-    .content-grid{grid-template-columns:1fr!important}
+    .stat-grid{grid-template-columns:1fr 1fr}
+    .content-grid{grid-template-columns:1fr}
     
     .table{font-size:13px}
     .table th,.table td{padding:10px}
 }
 @media (max-width: 480px) {
-    .stat-grid{grid-template-columns:1fr!important}
+    .stat-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -229,14 +226,17 @@ const Utils={
         const c=document.getElementById('toastContainer');
         const d=document.createElement('div');
         d.className='toast';
-        d.style.borderColor=type==='success'?'var(--success)':type==='error'?'var(--danger)':'var(--primary)';
+        d.style.borderLeft='4px solid '+(type==='success'?'var(--success)':type==='error'?'var(--danger)':'var(--primary)');
         d.innerHTML=msg;
         c.appendChild(d);
         setTimeout(()=>d.remove(),3000);
     },
     fmtDate(d){try{return new Date(d).toLocaleString()}catch{return'-'}},
     esc(s){if(!s)return'';return s.toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")},
-    trunc(s,l=15){return s&&s.length>l?s.substring(0,l)+'...':s||'-'}
+    trunc(s,l=15){
+        if(!s) return '-';
+        return `<span class="text-trunc" title="${s}">${s}</span>`; // Wraps in span for CSS ellipsis
+    }
 };
 
 const API={
@@ -263,7 +263,7 @@ const Auth={
         if(ok){
             App.showDash();
         }else{
-            document.getElementById('loginError').style.display='inline-block';
+            document.getElementById('loginError').style.display='block'; // Fixed display:block
             btn.disabled=false;btn.innerHTML='Verify Access';
         }
     },
@@ -272,33 +272,39 @@ const Auth={
 
 const Dashboard={
     async render(){
-        const r=await API.get('/api/admin/stats');
-        const s=r.stats||{};
-        return `
-        <div class="page-header">
-            <div class="page-title"><h1>Dashboard</h1><p>System Overview</p></div>
-            <div class="page-actions"><button class="btn btn-secondary" onclick="App.nav('dashboard')">${ICONS.refresh} Refresh</button></div>
-        </div>
-        <div class="stat-grid">
-            <div class="card stat-card"><div class="stat-value">${s.sessions||0}</div><div class="stat-label">Active Sessions</div></div>
-            <div class="card stat-card"><div class="stat-value" style="color:var(--success)">${s.success||0}</div><div class="stat-label">Successful Loads</div></div>
-            <div class="card stat-card"><div class="stat-value" style="color:var(--danger)">${s.bans||0}</div><div class="stat-label">Total Bans</div></div>
-            <div class="card stat-card"><div class="stat-value" style="color:var(--warning)">${s.challenges||0}</div><div class="stat-label">Challenges</div></div>
-        </div>
-        <div class="content-grid">
-            <div class="card">
-                <div class="card-header"><span class="card-title">Recent Activity</span></div>
-                <div id="recentLogs" style="padding:16px"><div class="spinner"></div></div>
+        // Loading state handled by App.nav
+        try {
+            const r=await API.get('/api/admin/stats');
+            if(!r.success) throw new Error("Failed to load stats");
+            const s=r.stats||{};
+            return `
+            <div class="page-header">
+                <div class="page-title"><h1>Dashboard</h1><p>System Overview</p></div>
+                <div class="page-actions"><button class="btn btn-secondary" onclick="App.nav('dashboard')">${ICONS.refresh} Refresh</button></div>
             </div>
-            <div class="card">
-                <div class="card-header"><span class="card-title">Quick Actions</span></div>
-                <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
-                    <button class="btn btn-secondary" onclick="App.nav('sessions')">Manage Sessions</button>
-                    <button class="btn btn-secondary" onclick="App.nav('bans')">Manage Bans</button>
-                    <button class="btn btn-danger" onclick="Dashboard.clearCache()">Clear Script Cache</button>
+            <div class="stat-grid">
+                <div class="card stat-card"><div class="stat-value">${s.sessions||0}</div><div class="stat-label">Active Sessions</div></div>
+                <div class="card stat-card"><div class="stat-value" style="color:var(--success)">${s.success||0}</div><div class="stat-label">Successful Loads</div></div>
+                <div class="card stat-card"><div class="stat-value" style="color:var(--danger)">${s.bans||0}</div><div class="stat-label">Total Bans</div></div>
+                <div class="card stat-card"><div class="stat-value" style="color:var(--warning)">${s.challenges||0}</div><div class="stat-label">Challenges</div></div>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Recent Activity</span></div>
+                    <div id="recentLogs" style="padding:16px"><div class="spinner"></div></div>
                 </div>
-            </div>
-        </div>`;
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Quick Actions</span></div>
+                    <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+                        <button class="btn btn-secondary" onclick="App.nav('sessions')">Manage Sessions</button>
+                        <button class="btn btn-secondary" onclick="App.nav('bans')">Manage Bans</button>
+                        <button class="btn btn-danger" onclick="Dashboard.clearCache()">Clear Script Cache</button>
+                    </div>
+                </div>
+            </div>`;
+        } catch (e) {
+            return `<div style="text-align:center;padding:40px;color:var(--danger)">Error loading dashboard: ${e.message}<br><button class="btn btn-secondary" onclick="location.reload()">Retry</button></div>`;
+        }
     },
     async init(){
         const r=await API.get('/api/admin/logs',{limit:5});
@@ -384,7 +390,7 @@ const Bans={
         const v=document.getElementById('banVal').value;
         const r=document.getElementById('banRes').value;
         if(!v)return;
-        await API.post('/api/admin/bans',{hwid:v,reason:r}); // Simplified, backend handles detection
+        await API.post('/api/admin/bans',{hwid:v,reason:r}); // Simplified for UX, backend handles identification
         App.closeModal();App.nav('bans');
     }
 };
@@ -406,7 +412,7 @@ const Suspended={
                     <td><code>${Utils.trunc(s.value,15)}</code></td>
                     <td>${s.expiresAt?Utils.fmtDate(s.expiresAt):'Permanent'}</td>
                     <td><button class="btn btn-success btn-sm" onclick="Suspended.del('${s.type}','${s.value}')">${ICONS.play} Unsuspend</button></td>
-                </tr>`).join('')}</tbody>
+                </tr>`).join('') || '<tr><td colspan="4" style="text-align:center">No suspended users</td></tr>'}</tbody>
             </table>
         </div>`;
     },
@@ -444,7 +450,7 @@ const Whitelist={
         <div class="card table-container">
             <table class="table">
                 <thead><tr><th>Type</th><th>Value</th><th>Action</th></tr></thead>
-                <tbody>${list.map(i=>`<tr><td>${i.t}</td><td><code>${i.v}</code></td><td><button class="btn btn-danger btn-sm" onclick="Whitelist.del('${i.t}','${i.v}')">${ICONS.trash}</button></td></tr>`).join('')}</tbody>
+                <tbody>${list.map(i=>`<tr><td>${i.t}</td><td><code>${i.v}</code></td><td><button class="btn btn-danger btn-sm" onclick="Whitelist.del('${i.t}','${i.v}')">${ICONS.trash}</button></td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center">No whitelist</td></tr>'}</tbody>
             </table>
         </div>`;
     },
@@ -531,13 +537,17 @@ const App={
         c.innerHTML='<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
         
         let html='';
-        if(page==='dashboard') { html=await Dashboard.render(); await Dashboard.init(); }
-        else if(page==='sessions') html=await Sessions.render();
-        else if(page==='bans') html=await Bans.render();
-        else if(page==='suspended') html=await Suspended.render();
-        else if(page==='whitelist') html=await Whitelist.render();
-        else if(page==='logs') html=await Logs.render();
-        else if(page==='settings') html=Settings.render();
+        try {
+            if(page==='dashboard') { html=await Dashboard.render(); await Dashboard.init(); }
+            else if(page==='sessions') html=await Sessions.render();
+            else if(page==='bans') html=await Bans.render();
+            else if(page==='suspended') html=await Suspended.render();
+            else if(page==='whitelist') html=await Whitelist.render();
+            else if(page==='logs') html=await Logs.render();
+            else if(page==='settings') html=Settings.render();
+        } catch (e) {
+            html=`<div style="padding:20px;text-align:center;color:var(--danger)">Error loading page: ${e.message}</div>`;
+        }
         
         c.innerHTML=html;
     },
