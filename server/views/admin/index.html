@@ -2,34 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"> <!-- Added user-scalable=no -->
 <title>Admin Panel</title>
 <style>
 /* Base Reset & Typography */
+html{font-size:16px} /* Default font size */
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;overflow-x:hidden} /* overflow-x:hidden to prevent accidental horizontal scroll on body */
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;overflow-x:hidden}
 h1,h2,h3,h4{margin:0;padding:0;font-weight:600}
 p{margin:0;padding:0;color:#888}
 code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Utilities */
 .hidden{display:none!important}
-.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:#8b5cf6;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto}
+.spinner{width:2.5rem;height:2.5rem;border:3px solid rgba(255,255,255,0.1);border-top-color:#8b5cf6;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Card & Container */
-.card{background:rgba(20,20,35,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:12px;backdrop-filter:blur(10px)}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-.stat-card{padding:20px}
-.stat-icon{font-size:28px;margin-bottom:8px}
-.stat-value{font-size:28px;font-weight:700}
-.stat-label{color:#666;font-size:14px}
-.content-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
-.actions-row{display:flex;gap:10px;flex-wrap:wrap}
-.info-box{background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:16px;margin-bottom:16px;font-size:14px}
+.card{background:rgba(20,20,35,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;backdrop-filter:blur(10px)}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-card{padding:1.25rem}
+.stat-icon{font-size:1.75rem;margin-bottom:0.5rem}
+.stat-value{font-size:1.75rem;font-weight:700}
+.stat-label{color:#666;font-size:0.875rem}
+.content-grid{display:grid;grid-template-columns:2fr 1fr;gap:1rem}
+.actions-row{display:flex;gap:0.75rem;flex-wrap:wrap}
+.info-box{background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:0.5rem;padding:1rem;margin-bottom:1rem;font-size:0.875rem}
 
 /* Buttons */
-.btn{padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;white-space:nowrap}
+.btn{padding:0.625rem 1rem;border:none;border-radius:0.5rem;cursor:pointer;font-size:0.875rem;display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s;white-space:nowrap}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
 .btn-primary{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff}
 .btn-secondary{background:rgba(255,255,255,0.1);color:#fff}
@@ -37,52 +38,52 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 .btn-danger{background:#ef4444;color:#fff}
 .btn-success{background:#22c55e;color:#fff}
 .btn-warning{background:#f59e0b;color:#fff}
-.btn-sm{padding:6px 12px;font-size:12px}
+.btn-sm{padding:0.375rem 0.75rem;font-size:0.75rem}
 
 /* Forms */
-.form-input,.form-select{width:100%;padding:12px 16px;background:rgba(15,15,25,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px}
+.form-input,.form-select{width:100%;padding:0.75rem 1rem;background:rgba(15,15,25,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;color:#fff;font-size:0.875rem}
 .form-input:focus,.form-select:focus{outline:none;border-color:#8b5cf6}
-.form-group{margin-bottom:16px}
-.form-label{display:block;margin-bottom:6px;color:#888;font-size:14px}
-.form-help{font-size:12px;color:#666;margin-top:4px}
+.form-group{margin-bottom:1rem}
+.form-label{display:block;margin-bottom:0.375rem;color:#888;font-size:0.875rem}
+.form-help{font-size:0.75rem;color:#666;margin-top:0.25rem}
 
 /* Toasts */
-.toast-container{position:fixed;bottom:20px;right:20px;z-index:9999}
-.toast{background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;margin-top:10px;animation:slideIn 0.3s}
+.toast-container{position:fixed;bottom:1.25rem;right:1.25rem;z-index:9999}
+.toast{background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;padding:0.75rem 1rem;margin-top:0.625rem;animation:slideIn 0.3s}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
 /* Login Screen */
-.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.login-box{background:rgba(20,20,35,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px;width:100%;max-width:400px}
-.login-title{font-size:24px;text-align:center;margin-bottom:8px}
-.login-subtitle{color:#888;text-align:center;margin-bottom:24px;font-size:14px}
-.login-error{background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#ef4444;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px}
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.25rem}
+.login-box{background:rgba(20,20,35,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:1rem;padding:2.5rem;width:100%;max-width:400px}
+.login-title{font-size:1.5rem;text-align:center;margin-bottom:0.5rem}
+.login-subtitle{color:#888;text-align:center;margin-bottom:1.5rem;font-size:0.875rem}
+.login-error{background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#ef4444;padding:0.75rem;border-radius:0.5rem;margin-bottom:1rem;font-size:0.875rem}
 
 /* App Layout */
 .app{display:flex;min-height:100vh}
-.sidebar{width:260px;background:rgba(15,15,25,0.95);border-right:1px solid rgba(255,255,255,0.1);padding:20px;position:fixed;height:100vh;overflow-y:auto;z-index:100;transition:transform 0.3s}
-.sidebar-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
-.sidebar-logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#8b5cf6,#6366f1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-.sidebar-logo-text{font-size:18px;font-weight:700}
-.nav-section{margin-bottom:24px}
-.nav-section-title{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding:0 12px}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#888;cursor:pointer;transition:all 0.2s;margin-bottom:4px}
+.sidebar{width:16.25rem;background:rgba(15,15,25,0.95);border-right:1px solid rgba(255,255,255,0.1);padding:1.25rem;position:fixed;height:100vh;overflow-y:auto;z-index:100;transition:transform 0.3s}
+.sidebar-logo{display:flex;align-items:center;gap:0.75rem;margin-bottom:2rem}
+.sidebar-logo-icon{width:2.5rem;height:2.5rem;background:linear-gradient(135deg,#8b5cf6,#6366f1);border-radius:0.625rem;display:flex;align-items:center;justify-content:center;font-size:1.25rem}
+.sidebar-logo-text{font-size:1.125rem;font-weight:700}
+.nav-section{margin-bottom:1.5rem}
+.nav-section-title{font-size:0.6875rem;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem;padding:0 0.75rem}
+.nav-item{display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0.75rem;border-radius:0.5rem;color:#888;cursor:pointer;transition:all 0.2s;margin-bottom:0.25rem}
 .nav-item:hover{background:rgba(139,92,246,0.1);color:#fff}
 .nav-item.active{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff}
-.main-content{flex:1;margin-left:260px;padding:24px;transition:margin 0.3s}
+.main-content{flex:1;margin-left:16.25rem;padding:1.5rem;transition:margin 0.3s}
 .page-content{max-width:1200px;margin:0 auto}
-.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px}
-.page-title{font-size:28px;margin:0}
-.page-subtitle{color:#666;margin:4px 0 0}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.page-title{font-size:1.75rem;margin:0}
+.page-subtitle{color:#666;margin:0.25rem 0 0}
 
 /* Tables */
-.table-container{overflow-x:auto; /* Allow horizontal scroll for tables */}
+.table-container{overflow-x:auto} /* Allow horizontal scroll for tables */
 .table{width:100%;border-collapse:collapse;min-width:650px} /* min-width to force scroll on smaller screens */
-.table th,.table td{padding:12px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}
-.table th{font-size:12px;color:#888;text-transform:uppercase;font-weight:600;white-space:nowrap}
-.table td{font-size:14px}
+.table th,.table td{padding:0.75rem 1rem;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}
+.table th{font-size:0.75rem;color:#888;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.table td{font-size:0.875rem}
 .table tr:hover{background:rgba(139,92,246,0.05)}
-.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.badge{display:inline-block;padding:0.25rem 0.625rem;border-radius:1.25rem;font-size:0.75rem;font-weight:500}
 .badge-success{background:rgba(34,197,94,0.2);color:#22c55e}
 .badge-danger{background:rgba(239,68,68,0.2);color:#ef4444}
 .badge-warning{background:rgba(245,158,11,0.2);color:#f59e0b}
@@ -90,48 +91,56 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 .badge-purple{background:rgba(139,92,246,0.2);color:#8b5cf6}
 
 /* Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:all 0.2s;padding:20px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:all 0.2s;padding:1.25rem}
 .modal-overlay.active{opacity:1;visibility:visible}
-.modal{background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
-.modal-header{padding:20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center}
-.modal-title{font-size:18px;font-weight:600}
-.modal-close{background:none;border:none;color:#888;font-size:24px;cursor:pointer}
-.modal-body{padding:20px;overflow-y:auto;flex-grow:1} /* Allows modal body to scroll */
-.modal-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;gap:10px}
+.modal{background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:1rem;width:100%;max-width:500px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+.modal-header{padding:1.25rem;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:1.125rem;font-weight:600}
+.modal-close{background:none;border:none;color:#888;font-size:1.5rem;cursor:pointer}
+.modal-body{padding:1.25rem;overflow-y:auto;flex-grow:1} /* Allows modal body to scroll */
+.modal-footer{padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;gap:0.625rem}
 
 /* Responsive adjustments */
-.mobile-menu{display:none;position:fixed;top:16px;left:16px;z-index:101;background:rgba(139,92,246,0.9);border:none;color:#fff;width:44px;height:44px;border-radius:10px;font-size:20px;cursor:pointer}
+.mobile-menu{display:none;position:fixed;top:1rem;left:1rem;z-index:101;background:rgba(139,92,246,0.9);border:none;color:#fff;width:2.75rem;height:2.75rem;border-radius:0.625rem;font-size:1.25rem;cursor:pointer}
 .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+
+/* MEDIA QUERIES FOR RESPONSIVENESS */
 @media(max-width:1024px){
 .stat-grid{grid-template-columns:repeat(2,1fr)}
 .content-grid{grid-template-columns:1fr}
 .main-content{margin-left:0} /* Reset margin-left for content when sidebar is hidden */
 }
-@media(max-width:768px){
+@media(max-width:768px){ /* Tablet and small screens */
+html{font-size:14px} /* Smaller base font size for better scaling */
 .mobile-menu{display:flex;align-items:center;justify-content:center}
-.sidebar{transform:translateX(-100%);padding-top:70px} /* Adjust padding for mobile menu */
+.sidebar{transform:translateX(-100%);padding-top:4.375rem} /* Adjust padding for mobile menu */
 .sidebar.open{transform:translateX(0)}
 .sidebar-overlay.open{display:block}
-.main-content{margin-left:0;padding:16px;padding-top:70px} /* Adjust padding for mobile menu */
+.main-content{margin-left:0;padding:1rem;padding-top:4.375rem} /* Adjust padding for mobile menu */
 .page-header{flex-direction:column;align-items:flex-start}
-.page-title{font-size:24px} /* Smaller title on mobile */
+.page-title{font-size:1.5rem} /* Smaller title on mobile */
 .stat-grid{grid-template-columns:1fr 1fr}
-.stat-card{padding:16px}
-.stat-value{font-size:24px}
-.btn{padding:8px 14px;font-size:13px} /* Smaller buttons on mobile */
-.table th,.table td{padding:8px 10px;font-size:12px} /* Smaller table text on mobile */
-.badge{font-size:10px}
-.form-input,.form-select{padding:10px 12px;font-size:13px}
+.stat-card{padding:1rem}
+.stat-value{font-size:1.5rem}
+.btn{padding:0.5rem 0.875rem;font-size:0.8125rem} /* Smaller buttons on mobile */
+.table th,.table td{padding:0.5rem 0.625rem;font-size:0.75rem} /* Smaller table text on mobile */
+.badge{font-size:0.625rem;padding:0.2rem 0.5rem}
+.form-input,.form-select{padding:0.625rem 0.75rem;font-size:0.8125rem}
 .modal{max-width:95%}
+.login-box{padding:2rem}
 }
-@media(max-width:480px){
+@media(max-width:480px){ /* Mobile phones */
+html{font-size:12px} /* Even smaller base font size */
 .stat-grid{grid-template-columns:1fr}
 .actions-row{flex-direction:column}
 .actions-row .btn{width:100%}
 .modal{max-width:95%}
-.login-box{padding:25px}
-.login-title{font-size:20px}
-.login-subtitle{font-size:12px}
+.login-box{padding:1.5rem}
+.login-title{font-size:1.25rem}
+.login-subtitle{font-size:0.75rem}
+.mobile-menu{width:2.5rem;height:2.5rem;font-size:1.125rem;top:0.75rem;left:0.75rem}
+.sidebar{padding-top:3.75rem}
+.main-content{padding-top:3.75rem}
 }
 </style>
 </head>
@@ -143,11 +152,11 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 <!-- Login Screen -->
 <div class="login-screen" id="loginScreen">
 <div class="login-box">
-<div style="text-align:center;font-size:48px;margin-bottom:16px">🛡️</div>
+<div style="text-align:center;font-size:3rem;margin-bottom:1rem">🛡️</div>
 <h1 class="login-title">Admin Panel</h1>
 <p class="login-subtitle">Enter your admin key to continue</p>
 <div class="login-error hidden" id="loginError"><span id="loginErrorText"></span></div>
-<div style="margin-bottom:16px"><input type="password" class="form-input" id="adminKeyInput" placeholder="Enter admin key..."></div>
+<div style="margin-bottom:1rem"><input type="password" class="form-input" id="adminKeyInput" placeholder="Enter admin key..."></div>
 <button class="btn btn-primary" style="width:100%" id="loginBtn">🚀 Login</button>
 </div>
 </div>
@@ -170,11 +179,11 @@ code{font-family:monospace;background:rgba(255,255,255,0.05);padding:2px 6px;bor
 <div class="nav-item" data-page="whitelist">⭐ Whitelist</div>
 <div class="nav-item" data-page="settings">⚙️ Settings</div>
 </div>
-<div style="margin-top:auto;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1)">
+<div style="margin-top:auto;padding-top:1.25rem;border-top:1px solid rgba(255,255,255,0.1)">
 <div class="nav-item" onclick="Auth.logout()">🚪 Logout</div>
 </div>
 </aside>
-<main class="main-content"><div class="page-content" id="pageContent"><div style="text-align:center;padding:60px"><div class="spinner"></div></div></div></main>
+<main class="main-content"><div class="page-content" id="pageContent"><div style="text-align:center;padding:3.75rem"><div class="spinner"></div></div></div></main>
 </div>
 <div class="toast-container" id="toastContainer"></div>
 
