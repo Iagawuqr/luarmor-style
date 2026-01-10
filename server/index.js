@@ -140,44 +140,186 @@ return script;
 function isObfuscated(s) { if (!s) return false; return [/Luraph/i, /Moonsec/i, /IronBrew/i, /Prometheus/i, /PSU/i].some(r => r.test(s.substring(0, 500))); }
 
 function wrapScript(s, serverUrl) {
-const o = (config.OWNER_USER_IDS || []).map(id => `[${id}]=true`).join(',');
-const w = (config.WHITELIST_USER_IDS || []).map(id => `[${id}]=true`).join(',');
+const ownerIds = (config.OWNER_USER_IDS || []).join(',');
+const whitelistIds = (config.WHITELIST_USER_IDS || []).join(',');
 const sid = crypto.randomBytes(16).toString('hex');
-const as = config.ANTI_SPY_ENABLED !== false;
-const hbi = 45;
+const antiSpy = config.ANTI_SPY_ENABLED !== false;
 
-const wrapper = `
-local _CFG={o={${o || ''}},w={${w || ''}},wh="${serverUrl}/api/webhook/suspicious",hb="${serverUrl}/api/heartbeat",sid="${sid}",as=${as},hbi=${hbi}}
-local PS=game:GetService("Players")
-local CG=game:GetService("CoreGui")
-local SG=game:GetService("StarterGui")
-local HS=game:GetService("HttpService")
-local LP=PS.LocalPlayer
-local _A=true
-local _C={}
-local _HF=0
-local _SS={}
-local _DC={}
-local function NT(t,x,d)pcall(function()SG:SetCore("SendNotification",{Title=t,Text=x,Duration=d or 3})end)end
-local function GH()local s,r=pcall(function()if gethwid then return gethwid()end;if getexecutorname then return getexecutorname()..tostring(LP.UserId)end;return"NK_"..tostring(LP.UserId)end)return s and r or"UNK"end
-local function HP(u,d)local rq=(syn and syn.request)or request or http_request or(http and http.request)if not rq then return end;pcall(function()rq({Url=u,Method="POST",Headers={["Content-Type"]="application/json",["User-Agent"]="Roblox/WinInet",["x-hwid"]=GH(),["x-roblox-id"]=tostring(LP.UserId),["x-session-id"]=_CFG.sid},Body=HS:JSONEncode(d)})end)end
-local function IW(u)return _CFG.w[u]==true end
-local function IO(u)return _CFG.o[u]==true end
-local function TM(r,tn)if not _A then return end;_A=false;HP(_CFG.wh,{userId=LP.UserId,tool=tn or r,reason=r,sessionId=_CFG.sid,hwid=GH()});NT("Security",r or"Terminated",3);for i=#_C,1,-1 do pcall(function()_C[i]:Disconnect()end)end;task.wait(0.5);pcall(function()if LP.Character then LP.Character:BreakJoints()end end);task.wait(0.5);pcall(function()LP:Kick(r or"Security Violation")end)end
-local function ITG(gui)if not gui then return false,nil end;local dom=false;pcall(function()if not gui:IsA("ScreenGui")and not gui:IsA("Frame")then return end;if gui:IsA("ScreenGui")and gui.Enabled==false then return end;local n=gui.Name:lower();local bl={"simplespy","remotespy","httpspy","synspy","infiniteyield","infinite_yield","iy_main","dex","dexexplorer","darkdex","hydroxide"};for _,dn in ipairs(bl)do if n:find(dn)then dom=true;return end end;local cc=0;pcall(function()cc=#gui:GetDescendants()end);if cc<3 then return end;local htb,hsf=false,false;pcall(function()for _,v in pairs(gui:GetDescendants())do if v:IsA("TextBox")then htb=true end;if v:IsA("ScrollingFrame")then hsf=true end end end);if n:find("spy")or n:find("remote")or n:find("logger")then if htb or hsf then dom=true end end;if n:find("dex")or n:find("explorer")then if hsf then dom=true end end;if n:find("iy")or n:find("infinite")or n:find("yield")then if htb then dom=true end end end);return dom,gui.Name end
-local function SAT()if not _CFG.as or IW(LP.UserId)then return false,nil end;local f,tn=false,nil;pcall(function()for _,gui in pairs(CG:GetChildren())do if gui:IsA("ScreenGui")and gui.Enabled==true then local sn=gui.Name:lower();if _SS[sn]or _DC[sn]then continue end;local it,nm=ITG(gui);if it then f,tn=true,nm;_DC[sn]=true;return end end end end);return f,tn end
-local function TS()pcall(function()for _,gui in pairs(CG:GetChildren())do if gui:IsA("ScreenGui")then _SS[gui.Name:lower()]=true end end end)end
-local function SM()table.insert(_C,CG.ChildAdded:Connect(function(ch)if not _A or not ch:IsA("ScreenGui")then return end;task.wait(0.5);if not _A then return end;local sn=ch.Name:lower();if _SS[sn]or _DC[sn]then return end;pcall(function()if ch.Enabled==true then local it,nm=ITG(ch);if it then _DC[sn]=true;TM("Spy Tool: "..nm,nm)end end end)end));task.spawn(function()task.wait(5);while _A do local f,tn=SAT();if f then TM("Spy Tool: "..tn,tn);break end;task.wait(5)end end)end
-local function COP()for _,p in pairs(PS:GetPlayers())do if IO(p.UserId)and p~=LP then return false end end;return true end
-local function SOM()table.insert(_C,PS.PlayerAdded:Connect(function(p)task.wait(1);if IO(p.UserId)and _A then TM("Owner joined","OwnerProtection")end end))end
-local function SHB()task.spawn(function()task.wait(15);while _A do local res;local rq=(syn and syn.request)or request or http_request or(http and http.request);if rq then local s,r=pcall(function()return rq({Url=_CFG.hb,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=HS:JSONEncode({sessionId=_CFG.sid,hwid=GH(),userId=LP.UserId})})end);if s and r and r.StatusCode==200 then local ok,bd=pcall(function()return HS:JSONDecode(r.Body)end);if ok then res=bd end end end;if res then _HF=0;if res.action=="TERMINATE"then TM(res.reason or"Terminated","Heartbeat");break elseif res.action=="MESSAGE"and res.message then NT("Message",res.message,5)end else _HF=_HF+1;if _HF>=5 then TM("Connection lost","Heartbeat");break end end;task.wait(_CFG.hbi)end end)end
-if not COP()then NT("Warning","Owner in server!",5);return end
-TS()
-SOM()
-SM()
-SHB()
-NT("Shield","Protection active",3)
-`;
+const wrapper = [
+'local _CFG={}',
+'_CFG.owners={' + ownerIds + '}',
+'_CFG.whitelist={' + whitelistIds + '}',
+'_CFG.webhook="' + serverUrl + '/api/webhook/suspicious"',
+'_CFG.heartbeat="' + serverUrl + '/api/heartbeat"',
+'_CFG.sid="' + sid + '"',
+'_CFG.antispy=' + antiSpy,
+'_CFG.hbi=45',
+'',
+'local PS=game:GetService("Players")',
+'local CG=game:GetService("CoreGui")',
+'local SG=game:GetService("StarterGui")',
+'local HS=game:GetService("HttpService")',
+'local LP=PS.LocalPlayer',
+'local _Active=true',
+'local _Connections={}',
+'local _HeartbeatFails=0',
+'local _Snapshot={}',
+'',
+'local function Notify(t,m,d)',
+'    pcall(function()',
+'        SG:SetCore("SendNotification",{Title=t,Text=m,Duration=d or 3})',
+'    end)',
+'end',
+'',
+'local function GetHWID()',
+'    local s,r=pcall(function()',
+'        if gethwid then return gethwid() end',
+'        if getexecutorname then return getexecutorname()..tostring(LP.UserId) end',
+'        return "NK_"..tostring(LP.UserId)',
+'    end)',
+'    return s and r or "UNK"',
+'end',
+'',
+'local function HttpPost(url,data)',
+'    local req=(syn and syn.request)or request or http_request or(http and http.request)',
+'    if not req then return end',
+'    pcall(function()',
+'        req({Url=url,Method="POST",Headers={["Content-Type"]="application/json",["x-hwid"]=GetHWID(),["x-roblox-id"]=tostring(LP.UserId),["x-session-id"]=_CFG.sid},Body=HS:JSONEncode(data)})',
+'    end)',
+'end',
+'',
+'local function IsOwner(uid)',
+'    for _,id in ipairs(_CFG.owners) do',
+'        if id==uid then return true end',
+'    end',
+'    return false',
+'end',
+'',
+'local function IsWhitelisted(uid)',
+'    for _,id in ipairs(_CFG.whitelist) do',
+'        if id==uid then return true end',
+'    end',
+'    return false',
+'end',
+'',
+'local function Terminate(reason)',
+'    if not _Active then return end',
+'    _Active=false',
+'    HttpPost(_CFG.webhook,{userId=LP.UserId,reason=reason,sessionId=_CFG.sid,hwid=GetHWID()})',
+'    Notify("Security",reason or "Terminated",3)',
+'    for i=#_Connections,1,-1 do',
+'        pcall(function() _Connections[i]:Disconnect() end)',
+'    end',
+'    task.wait(0.5)',
+'    pcall(function() if LP.Character then LP.Character:BreakJoints() end end)',
+'    task.wait(0.5)',
+'    pcall(function() LP:Kick(reason or "Security Violation") end)',
+'end',
+'',
+'local function CheckOwnerInServer()',
+'    for _,p in pairs(PS:GetPlayers()) do',
+'        if IsOwner(p.UserId) and p~=LP then return false end',
+'    end',
+'    return true',
+'end',
+'',
+'local function StartOwnerMonitor()',
+'    table.insert(_Connections,PS.PlayerAdded:Connect(function(p)',
+'        task.wait(1)',
+'        if IsOwner(p.UserId) and _Active then',
+'            Terminate("Owner joined server")',
+'        end',
+'    end))',
+'end',
+'',
+'local function TakeSnapshot()',
+'    pcall(function()',
+'        for _,g in pairs(CG:GetChildren()) do',
+'            if g:IsA("ScreenGui") then _Snapshot[g.Name:lower()]=true end',
+'        end',
+'    end)',
+'end',
+'',
+'local function IsSpy(gui)',
+'    if not gui or not gui:IsA("ScreenGui") then return false end',
+'    if gui.Enabled==false then return false end',
+'    local n=gui.Name:lower()',
+'    local blacklist={"simplespy","remotespy","httpspy","dex","infiniteyield","hydroxide","darkdex"}',
+'    for _,b in ipairs(blacklist) do',
+'        if n:find(b) then return true end',
+'    end',
+'    return false',
+'end',
+'',
+'local function StartAntiSpy()',
+'    if not _CFG.antispy or IsWhitelisted(LP.UserId) then return end',
+'    table.insert(_Connections,CG.ChildAdded:Connect(function(c)',
+'        task.wait(0.5)',
+'        if not _Active then return end',
+'        if _Snapshot[c.Name:lower()] then return end',
+'        if IsSpy(c) then',
+'            Terminate("Spy Tool: "..c.Name)',
+'        end',
+'    end))',
+'    task.spawn(function()',
+'        task.wait(5)',
+'        while _Active do',
+'            for _,g in pairs(CG:GetChildren()) do',
+'                if not _Snapshot[g.Name:lower()] and IsSpy(g) then',
+'                    Terminate("Spy Tool: "..g.Name)',
+'                    break',
+'                end',
+'            end',
+'            task.wait(5)',
+'        end',
+'    end)',
+'end',
+'',
+'local function StartHeartbeat()',
+'    task.spawn(function()',
+'        task.wait(15)',
+'        while _Active do',
+'            local res',
+'            local req=(syn and syn.request)or request or http_request or(http and http.request)',
+'            if req then',
+'                local s,r=pcall(function()',
+'                    return req({Url=_CFG.heartbeat,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=HS:JSONEncode({sessionId=_CFG.sid,hwid=GetHWID(),userId=LP.UserId})})',
+'                end)',
+'                if s and r and r.StatusCode==200 then',
+'                    local ok,body=pcall(function() return HS:JSONDecode(r.Body) end)',
+'                    if ok then res=body end',
+'                end',
+'            end',
+'            if res then',
+'                _HeartbeatFails=0',
+'                if res.action=="TERMINATE" then',
+'                    Terminate(res.reason or "Terminated by server")',
+'                    break',
+'                end',
+'            else',
+'                _HeartbeatFails=_HeartbeatFails+1',
+'                if _HeartbeatFails>=5 then',
+'                    Terminate("Connection lost")',
+'                    break',
+'                end',
+'            end',
+'            task.wait(_CFG.hbi)',
+'        end',
+'    end)',
+'end',
+'',
+'if not CheckOwnerInServer() then',
+'    Notify("Warning","Owner in server!",5)',
+'    return',
+'end',
+'',
+'TakeSnapshot()',
+'StartOwnerMonitor()',
+'StartAntiSpy()',
+'StartHeartbeat()',
+'Notify("Shield","Protection active",3)',
+''
+].join('\n');
 
 return wrapper + '\n' + s;
 }
