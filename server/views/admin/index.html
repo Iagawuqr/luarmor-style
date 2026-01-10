@@ -178,7 +178,7 @@ const API={
     },
     get(e,p){return this.req(p?e+'?'+new URLSearchParams(p):e)},
     post(e,b){return this.req(e,{method:'POST',body:JSON.stringify(b)})},
-    delete(e,b){return this.req(e,{method:'DELETE',body:b?JSON.stringify(b):null})} // FIXED: METHOD DELETE
+    delete(e,b){return this.req(e,{method:'DELETE',body:b?JSON.stringify(b):null})}
 };
 
 const Auth={
@@ -229,7 +229,7 @@ const Bans={
     async add(){
         const v=document.getElementById('banVal').value,r=document.getElementById('banRes').value;
         if(!v)return;
-        await API.post('/api/admin/bans',{hwid:v,reason:r}); // Backend smart detect
+        await API.post('/api/admin/bans',{hwid:v,reason:r});
         App.closeModal();App.nav('bans');
     }
 };
@@ -266,7 +266,14 @@ const Whitelist={
     async add(){const t=document.getElementById('wlType').value,v=document.getElementById('wlVal').value;if(v){await API.post('/api/admin/whitelist',{type:t,value:v});App.closeModal();App.nav('whitelist')}}
 };
 
-const Logs={async render(){const r=await API.get('/api/admin/logs',{limit:50});return `<div class="page-header"><div class="page-title"><h1>Logs</h1></div><div class="page-actions"><button class="btn btn-secondary" onclick="App.nav('logs')">${ICONS.refresh} Refresh</button></div></div><div class="card table-container"><table class="table"><thead><tr><th>Time</th><th>Action</th><th>IP</th><th>Status</th></tr></thead><tbody>${(r.logs||[]).map(l=>`<tr><td>${Utils.fmtDate(l.ts)}</td><td>${Utils.esc(l.action)}</td><td><code>${Utils.trunc(l.ip,12)}</code></td><td>${l.success?'<span class="badge badge-success">OK</span>':'<span class="badge badge-danger">FAIL</span>'}</td></tr>`).join('')}</tbody></table></div>`}};
+const Logs={
+    async render(){
+        const r=await API.get('/api/admin/logs',{limit:50});
+        return `<div class="page-header"><div class="page-title"><h1>Logs</h1></div><div class="page-actions"><button class="btn btn-secondary" onclick="App.nav('logs')">${ICONS.refresh} Refresh</button><button class="btn btn-danger" onclick="Logs.clear()">${ICONS.trash} Clear</button></div></div><div class="card table-container"><table class="table"><thead><tr><th>Time</th><th>Action</th><th>IP</th><th>Status</th></tr></thead><tbody>${(r.logs||[]).map(l=>`<tr><td>${Utils.fmtDate(l.ts)}</td><td>${Utils.esc(l.action)}</td><td><code>${Utils.trunc(l.ip,12)}</code></td><td>${l.success?'<span class="badge badge-success">OK</span>':'<span class="badge badge-danger">FAIL</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+    },
+    async clear(){if(confirm('Clear ALL logs?')){const r=await API.post('/api/admin/logs/clear');if(r.success){Utils.toast('Logs Cleared','success');App.nav('logs')}else{Utils.toast('Failed','error')}}}
+};
+
 const Settings={render(){return `<div class="page-header"><div class="page-title"><h1>Settings</h1></div></div><div class="card" style="padding:24px"><h3>Loader Script</h3><p style="margin-bottom:16px;font-size:13px">Copy this into your executor:</p><code style="display:block;padding:16px;background:#000;border:1px solid var(--border);border-radius:8px;word-break:break-all">loadstring(game:HttpGet("${CONFIG.API_BASE}/loader"))()</code></div>`}};
 
 const App={
