@@ -2,36 +2,75 @@ const config=require('../config');const fs=require('fs');const path=require('pat
 let redis=null,useRedis=false;const DATA_FILE=path.join(__dirname,'..','data','storage.json');const dataDir=path.join(__dirname,'..','data');
 if(!fs.existsSync(dataDir))fs.mkdirSync(dataDir,{recursive:true});
 const memoryStore={bans:new Map(),logs:[],challenges:new Map(),cache:new Map(),suspends:new Map(),stats:{success:0,challenges:0,bans:0}};
-const ALGO='aes-256-cbc';
-function encrypt(text,key){const k=crypto.scryptSync(key,'salt',32);const iv=crypto.randomBytes(16);const c=crypto.createCipheriv(ALGO,k,iv);let e=c.update(text,'utf8','hex');e+=c.final('hex');return iv.toString('hex')+':'+e}
-function decrypt(data,key){try{const[ivHex,enc]=data.split(':');const k=crypto.scryptSync(key,'salt',32);const iv=Buffer.from(ivHex,'hex');const d=crypto.createDecipheriv(ALGO,k,iv);let dec=d.update(enc,'hex','utf8');dec+=d.final('utf8');return dec}catch(e){return null}}
+
 function loadFromFile(){try{if(fs.existsSync(DATA_FILE)){const data=JSON.parse(fs.readFileSync(DATA_FILE,'utf8'));if(data.bans)Object.entries(data.bans).forEach(([k,v])=>memoryStore.bans.set(k,v));if(data.logs)memoryStore.logs=data.logs.slice(0,1000);if(data.stats)memoryStore.stats=data.stats;if(data.suspends)Object.entries(data.suspends).forEach(([k,v])=>memoryStore.suspends.set(k,v));console.log(`✅ Loaded ${memoryStore.bans.size} bans, ${memoryStore.suspends.size} suspends`)}}catch(e){console.error('Load error:',e.message)}}
 function saveToFile(){try{const data={bans:Object.fromEntries(memoryStore.bans),logs:memoryStore.logs.slice(0,500),stats:memoryStore.stats,suspends:Object.fromEntries(memoryStore.suspends),savedAt:new Date().toISOString()};fs.writeFileSync(DATA_FILE,JSON.stringify(data))}catch(e){}}
 setInterval(saveToFile,30000);process.on('beforeExit',saveToFile);process.on('SIGINT',()=>{saveToFile();process.exit()});process.on('SIGTERM',()=>{saveToFile();process.exit()});loadFromFile();
+
 async function initRedis(){if(config.REDIS_URL){console.log('🔄 Connecting Redis...');try{const Redis=require('ioredis');redis=new Redis(config.REDIS_URL,{maxRetriesPerRequest:3,lazyConnect:true,connectTimeout:10000,tls:config.REDIS_URL.startsWith('rediss://')?{}:undefined});redis.on('error',(e)=>console.error('Redis err:',e.message));redis.on('close',()=>{useRedis=false});await redis.ping();useRedis=true;console.log('✅ Redis OK')}catch(e){console.error('Redis fail:',e.message);useRedis=false}}else{console.log('ℹ️ No REDIS_URL')}}
 initRedis();
+
 async function addBan(key,data){memoryStore.stats.bans++;if(useRedis){try{await redis.hset('bans',key,JSON.stringify(data));return true}catch(e){}}memoryStore.bans.set(key,data);saveToFile();return true}
 async function removeBan(key){if(useRedis){try{await redis.hdel('bans',key);return true}catch(e){}}memoryStore.bans.delete(key);saveToFile();return true}
 async function removeBanById(banId){if(useRedis){try{const all=await redis.hgetall('bans');for(const[k,v]of Object.entries(all)){try{const p=JSON.parse(v);if(p.banId===banId){await redis.hdel('bans',k);return true}}catch{}}return false}catch(e){}}for(const[k,v]of memoryStore.bans){if(v.banId===banId){memoryStore.bans.delete(k);saveToFile();return true}}return false}
 async function isBanned(hwid,ip,playerId){const keys=[hwid,ip,playerId?String(playerId):null].filter(Boolean);if(keys.length===0)return{blocked:false};if(useRedis){try{for(const k of keys){const d=await redis.hget('bans',k);if(d){try{const p=JSON.parse(d);return{blocked:true,reason:p.reason||'Banned',banId:p.banId}}catch{}}}return{blocked:false}}catch(e){}}for(const k of keys){if(memoryStore.bans.has(k)){const d=memoryStore.bans.get(k);return{blocked:true,reason:d.reason||'Banned',banId:d.banId}}}return{blocked:false}}
 async function getAllBans(){if(useRedis){try{const all=await redis.hgetall('bans');return Object.values(all).map(v=>{try{return JSON.parse(v)}catch{return null}}).filter(Boolean).sort((a,b)=>new Date(b.ts)-new Date(a.ts))}catch(e){}}return Array.from(memoryStore.bans.values()).sort((a,b)=>new Date(b.ts)-new Date(a.ts))}
 async function clearBans(){if(useRedis){try{const all=await redis.hgetall('bans');const c=Object.keys(all).length;if(c>0)await redis.del('bans');return c}catch(e){}}const c=memoryStore.bans.size;memoryStore.bans.clear();saveToFile();return c}
+
 async function setChallenge(id,data,ttl=120){memoryStore.stats.challenges++;if(useRedis){try{await redis.setex(`ch:${id}`,ttl,JSON.stringify(data));return true}catch(e){}}memoryStore.challenges.set(id,{...data,expiresAt:Date.now()+(ttl*1000)});return true}
 async function getChallenge(id){if(useRedis){try{const d=await redis.get(`ch:${id}`);if(d)return JSON.parse(d);return null}catch(e){}}const d=memoryStore.challenges.get(id);if(d&&d.expiresAt>Date.now())return d;memoryStore.challenges.delete(id);return null}
 async function deleteChallenge(id){if(useRedis){try{await redis.del(`ch:${id}`);return true}catch(e){}}memoryStore.challenges.delete(id);return true}
+
 async function addLog(log){if(useRedis){try{await redis.lpush('logs',JSON.stringify(log));await redis.ltrim('logs',0,999);if(log.success)await redis.incr('stats:success');return true}catch(e){}}memoryStore.logs.unshift(log);if(memoryStore.logs.length>1000)memoryStore.logs=memoryStore.logs.slice(0,1000);if(log.success)memoryStore.stats.success++;return true}
 async function getLogs(limit=50){const l=Math.min(Math.max(1,limit),500);if(useRedis){try{const logs=await redis.lrange('logs',0,l-1);return logs.map(x=>{try{return JSON.parse(x)}catch{return null}}).filter(Boolean)}catch(e){}}return memoryStore.logs.slice(0,l)}
 async function clearLogs(){if(useRedis){try{await redis.del('logs');return true}catch(e){}}memoryStore.logs=[];saveToFile();return true}
+
 async function getCachedScript(){if(useRedis){try{return await redis.get('script:cache')}catch(e){}}const c=memoryStore.cache.get('script');if(c&&c.expiresAt>Date.now())return c.data;return null}
 async function setCachedScript(script,ttl=300){if(!script){if(useRedis){try{await redis.del('script:cache')}catch{}}memoryStore.cache.delete('script');return true}if(useRedis){try{await redis.setex('script:cache',ttl,script);return true}catch(e){}}memoryStore.cache.set('script',{data:script,expiresAt:Date.now()+(ttl*1000)});return true}
-async function getXorScript(key){if(!useRedis||!key)return null;try{const enc=await redis.get('script:xor');if(!enc)return null;const decoded=Buffer.from(enc,'base64').toString('binary');let result='';for(let i=0;i<decoded.length;i++){result+=String.fromCharCode(decoded.charCodeAt(i)^key.charCodeAt(i%key.length))}return result}catch(e){console.error('getXorScript:',e.message);return null}}
-async function setXorScript(script,key){if(!useRedis||!key)return false;try{let encrypted='';for(let i=0;i<script.length;i++){encrypted+=String.fromCharCode(script.charCodeAt(i)^key.charCodeAt(i%key.length))}const encoded=Buffer.from(encrypted,'binary').toString('base64');await redis.set('script:xor',encoded);await redis.del('script:cache');return true}catch(e){console.error('setXorScript:',e.message);return false}}
+
+async function setXorScript(script,key){
+if(!useRedis||!key)return false;
+try{
+const scriptBuffer=Buffer.from(script,'utf8');
+const keyBuffer=Buffer.from(key,'utf8');
+const encrypted=Buffer.alloc(scriptBuffer.length);
+for(let i=0;i<scriptBuffer.length;i++){
+encrypted[i]=scriptBuffer[i]^keyBuffer[i%keyBuffer.length];
+}
+const encoded=encrypted.toString('base64');
+await redis.set('script:xor',encoded);
+await redis.del('script:cache');
+console.log('[Redis] Script encrypted, size:',scriptBuffer.length);
+return true;
+}catch(e){console.error('setXorScript:',e.message);return false}
+}
+
+async function getXorScript(key){
+if(!useRedis||!key)return null;
+try{
+const enc=await redis.get('script:xor');
+if(!enc)return null;
+const encrypted=Buffer.from(enc,'base64');
+const keyBuffer=Buffer.from(key,'utf8');
+const decrypted=Buffer.alloc(encrypted.length);
+for(let i=0;i<encrypted.length;i++){
+decrypted[i]=encrypted[i]^keyBuffer[i%keyBuffer.length];
+}
+const result=decrypted.toString('utf8');
+console.log('[Redis] Script decrypted, size:',result.length);
+return result;
+}catch(e){console.error('getXorScript:',e.message);return null}
+}
+
 async function getScriptInfo(){if(!useRedis)return null;try{return{hash:await redis.get('script:hash'),updated:await redis.get('script:updated'),size:await redis.get('script:size')}}catch(e){return null}}
 async function getStats(){if(useRedis){try{const[s,c,b]=await Promise.all([redis.get('stats:success'),redis.get('stats:challenges'),redis.hlen('bans')]);return{success:parseInt(s)||0,challenges:parseInt(c)||0,bans:parseInt(b)||0}}catch(e){}}return{success:memoryStore.stats.success,challenges:memoryStore.stats.challenges,bans:memoryStore.bans.size}}
+
 async function addSuspend(type,value,data){const k=`${type}:${value}`;const e={...data,type,value,createdAt:new Date().toISOString()};if(useRedis){try{await redis.set(`suspend:${k}`,JSON.stringify(e));if(e.expiresAt){const ttl=Math.max(1,Math.floor((new Date(e.expiresAt)-Date.now())/1000));await redis.expire(`suspend:${k}`,ttl)}return true}catch(er){}}memoryStore.suspends.set(k,e);saveToFile();return true}
 async function removeSuspend(type,value){const k=`${type}:${value}`;if(useRedis){try{await redis.del(`suspend:${k}`);return true}catch(e){}}memoryStore.suspends.delete(k);saveToFile();return true}
 async function getSuspend(type,value){const k=`${type}:${value}`;if(useRedis){try{const d=await redis.get(`suspend:${k}`);if(d)return JSON.parse(d);return null}catch(e){}}return memoryStore.suspends.get(k)||null}
 async function getAllSuspends(){if(useRedis){try{const keys=await redis.keys('suspend:*');const all=[];for(const k of keys){const d=await redis.get(k);if(d){try{all.push(JSON.parse(d))}catch{}}}return all.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))}catch(e){}}return Array.from(memoryStore.suspends.values())}
 async function clearSuspends(){if(useRedis){try{const keys=await redis.keys('suspend:*');if(keys.length>0)await redis.del(...keys);return keys.length}catch(e){}}const c=memoryStore.suspends.size;memoryStore.suspends.clear();saveToFile();return c}
+
 async function getRedisClient(){return redis}
+
 module.exports={addBan,removeBan,removeBanById,isBanned,getAllBans,clearBans,setChallenge,getChallenge,deleteChallenge,addLog,getLogs,clearLogs,getCachedScript,setCachedScript,getXorScript,setXorScript,getScriptInfo,getStats,isRedisConnected:()=>useRedis,addSuspend,removeSuspend,getSuspend,getAllSuspends,clearSuspends,getRedisClient};
