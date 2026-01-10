@@ -34,23 +34,11 @@ function getClientType(req) {
     const h = req.headers;
     const eS = E_HEADERS.filter(x => h[x]).length;
     const bS = B_HEADERS.filter(x => h[x]).length;
-    
-    // 1. Cek User-Agent Bot Spesifik
     if (BOT_PATTERNS.some(p => ua.includes(p)) && eS === 0) return 'bot';
-    
-    // 2. Cek Header Browser
     if (bS >= 2) return 'browser';
-    
-    // 3. Cek Executor Headers
-    if (eS >= 2) return 'executor';
-    
-    // 4. Fallback UA check
-    if (ALLOWED_E.some(e => ua.includes(e))) return 'executor';
-    
-    // 5. Default suspicious
-    if (!ua || ua.length < 5) return 'bot';
-    
-    return 'unknown'; // Treat as bot usually
+    if (!ua || ua.length < 10) return eS >= 2 ? 'executor' : 'bot';
+    if (eS >= 2 || ALLOWED_E.some(e => ua.includes(e))) return 'executor';
+    return 'unknown';
 }
 
 async function checkWhitelist(h, u, req) {
@@ -62,30 +50,21 @@ async function checkWhitelist(h, u, req) {
 }
 
 function shouldBlock(req) {
-    // 1. Bypass Health Check
     if (req.path === '/health') return false;
-    
-    // 2. Bypass Whitelist IP (Uptime Robot etc)
     const ip = getIP(req);
     if (config.WHITELIST_IPS?.includes(ip) || dynamicWhitelist.ips.has(ip)) return false;
-    
-    // 3. Bypass Allowed Bots via UA
     const ua = (req.headers['user-agent'] || '').toLowerCase();
-    if (['uptimerobot', 'uptime-kuma', 'better uptime', 'googlebot'].some(b => ua.includes(b))) return false;
-    
-    // 4. Check Client Type
-    const type = getClientType(req);
-    return ['bot', 'browser', 'unknown'].includes(type);
+    if (['uptimerobot', 'uptime-kuma', 'better uptime'].some(b => ua.includes(b))) return false;
+    return ['bot', 'browser', 'unknown'].includes(getClientType(req));
 }
 
-// === FAKE SCRIPT GENERATOR ===
+// === FAKE SCRIPT & ENCRYPTION ===
 function genFakeScript() {
     const rS = (l) => { const c = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < l; i++) s += c[Math.floor(Math.random() * c.length)]; return s; };
     const rH = (l) => { let h = ''; for (let i = 0; i < l; i++) h += Math.floor(Math.random() * 16).toString(16); return h; };
     return `--[[ Protected by Script Shield v2.0 | Hash: ${rH(32)} ]]\nlocal ${rS(6)} = "${rS(32)}";\nlocal ${rS(5)} = function(${rS(4)})\n return string.byte(${rS(4)}) * ${Math.floor(Math.random() * 100)};\nend;\n--[[ Obfuscation applied ]]`;
 }
 
-// === LOADER ENCRYPTION ===
 function encryptLoader(script, key) {
     const kB = Buffer.from(key);
     const sB = Buffer.from(script);
@@ -111,7 +90,7 @@ function encryptChunk(c, k) {
     for (let i = 0; i < c.length; i++) {
         const cc = c.charCodeAt(i);
         const kc = k.charCodeAt(i % k.length);
-        e.push((cc ^ kc) & 255); // Force byte range
+        e.push((cc ^ kc) & 255);
     }
     return e;
 }
@@ -215,7 +194,7 @@ function isObfuscated(s) {
     return [/Luraph/i, /Moonsec/i, /IronBrew/i, /Prometheus/i, /PSU/i].some(r => r.test(s.substring(0, 500)));
 }
 
-// === SCRIPT WRAPPER (COMPLETE) ===
+// === SCRIPT WRAPPER (UPDATED ANTI-SPY) ===
 function wrapScript(s, serverUrl) {
     const o = (config.OWNER_USER_IDS || []).join(',');
     const w = (config.WHITELIST_USER_IDS || []).join(',');
@@ -223,45 +202,33 @@ function wrapScript(s, serverUrl) {
     const antiSpyEnabled = config.ANTI_SPY_ENABLED !== false;
     const autoBan = config.AUTO_BAN_SPYTOOLS === true;
     
-    return `--[[ Shield Protection For Attacker ]]
+    // Updated Blacklist: Including IY, Infinite Yield, Decompile, etc.
+    const blList = `{ "spy", "dex", "remote", "http", "dumper", "explorer", "infinite", "yield", "iy", "console", "decompile", "saveinstance", "scriptdumper" }`;
+
+    return `--[[ Script Shield Protection Layer ]]
 local _CFG={o={${o}},w={${w}},banUrl="${serverUrl}/api/ban",webhookUrl="${serverUrl}/api/webhook/suspicious",hbUrl="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},ab=${autoBan},hbi=45}
-local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService")
-local _A=true local _CON={} local _HB_FAIL=0 
+local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService") local _A=true local _CON={} local _HB_FAIL=0 
 local _SAFE_GUIS={} -- Snapshot list
+local _BL=${blList} -- Blacklist
 
--- Helper: Notification
 local function _n(t,x,d)pcall(function()_SG:SetCore("SendNotification",{Title=t,Text=x,Duration=d or 3})end)end
-
--- Helper: HWID
 local function _hw()local s,r=pcall(function()if gethwid then return gethwid()end;if getexecutorname then return getexecutorname()..tostring(_L.UserId)end;return"NK_"..tostring(_L.UserId)end)return s and r or"UNK"end
-
--- Helper: HTTP Post
 local function _hp(u,d)
     if not request then return end
     pcall(function()request({Url=u,Method="POST",Headers={["Content-Type"]="application/json",["User-Agent"]="Roblox/WinInet",["x-hwid"]=_hw(),["x-roblox-id"]=tostring(_L.UserId),["x-session-id"]=_CFG.sid},Body=_H:JSONEncode(d)})end)
 end
-
--- Helper: Checks
 local function _isW(u)for _,i in ipairs(_CFG.w)do if u==i then return true end end;return false end
 local function _isO(u)for _,i in ipairs(_CFG.o)do if u==i then return true end end;return false end
 
--- CLEANUP & KICK
 local function _cl(msg)
     if not _A then return end
     _A=false
     _n("⚠️",msg or"Script terminated",5)
-    
-    -- Disconnect events
     for i=#_CON,1,-1 do pcall(function()_CON[i]:Disconnect()end)end
-    
-    -- Destroy GUIs created by script (if tracked) or generic cleanup
-    -- (Disini bisa ditambahkan logika untuk destroy GUI spesifik script Anda jika Anda menyimpannya dalam variabel global/table)
-    
     task.wait(1)
     if msg then _L:Kick(msg) end
 end
 
--- 1. OWNER DETECTION
 local function _checkOwner()
     for _,p in pairs(_P:GetPlayers())do 
         if _isO(p.UserId) and p~=_L then return false end 
@@ -273,13 +240,11 @@ local function _startOwnerMonitor()
     table.insert(_CON,_P.PlayerAdded:Connect(function(p)
         task.wait(1)
         if _isO(p.UserId) then 
-            _cl("Owner joined the server") -- Script mati + Kick user
+            _cl("Owner joined the server")
         end
     end))
 end
 
--- 2. SMART ANTI-SPY
-local _BL_NAMES = {"spy", "dex", "remote", "http", "dumper", "explorer"}
 local function _takeSnapshot()
     pcall(function()
         for _,g in pairs(_CG:GetChildren())do _SAFE_GUIS[g]=true end
@@ -290,18 +255,16 @@ local function _scan()
     if not _CFG.as or _isW(_L.UserId) then return end
     pcall(function()
         for _,g in pairs(_CG:GetChildren())do
-            if not _SAFE_GUIS[g] then -- Jika GUI baru (tidak ada di snapshot)
+            if not _SAFE_GUIS[g] then
                 local n=g.Name:lower()
-                for _,b in ipairs(_BL_NAMES)do
+                for _,b in ipairs(_BL)do
                     if n:find(b) and not n:find("roblox") and not n:find("app") then
-                        -- Lapor ke server
                         _hp(_CFG.webhookUrl,{userId=_L.UserId,tool=g.Name,sessionId=_CFG.sid})
                         if _CFG.ab then 
                             _hp(_CFG.banUrl,{hwid=_hw(),playerId=_L.UserId,reason="Spy Tool: "..g.Name,sessionId=_CFG.sid})
                         end
-                        -- Kick user
                         _cl("Security Violation: "..g.Name)
-                        while true do end -- Freeze localscript
+                        while true do end
                     end
                 end
             end
@@ -312,22 +275,20 @@ end
 local function _startAntiSpy()
     if not _CFG.as then return end
     task.spawn(function()
-        _takeSnapshot() -- Ambil snapshot awal
+        _takeSnapshot()
         task.wait(1)
         while _A do
-            _scan() -- Cek perubahan
+            _scan()
             task.wait(3)
         end
     end)
 end
 
--- 3. HEARTBEAT (KILL SWITCH)
 local function _startHeartbeat()
     task.spawn(function()
         task.wait(10)
         while _A do
             local res
-            -- Panggil heartbeat endpoint (perlu return value untuk cek status)
             if request then
                 local s,r = pcall(function() 
                     return request({Url=_CFG.hbUrl,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=_H:JSONEncode({sessionId=_CFG.sid,hwid=_hw(),userId=_L.UserId})})
@@ -336,7 +297,6 @@ local function _startHeartbeat()
                     res = _H:JSONDecode(r.Body)
                 end
             end
-
             if res then 
                 _HB_FAIL=0
                 if res.action=="TERMINATE" then 
@@ -357,19 +317,18 @@ local function _startHeartbeat()
     end)
 end
 
--- === MAIN EXECUTION FLOW ===
 if not _checkOwner() then 
     _n("⚠️","Owner is in this server!",5)
-    return -- Jangan load script jika owner ada
+    return
 end
 
 _startOwnerMonitor()
 _startAntiSpy()
 _startHeartbeat()
 
--- Load Real Script
 ${s}`;
 }
+
 // === LOADERS (LUA) ===
 function getLoader(url) {
     return `local S="${url}" local H=game:GetService("HttpService") local P=game:GetService("Players") local L=P.LocalPlayer 
@@ -392,6 +351,8 @@ function getEncodedLoader(url, req) {
 
 // === VIEWS & STATIC ===
 const viewsPath = path.join(__dirname, 'views');
+// LOAD HTML TEMPLATE IF EXISTS (for /loader page)
+const LOADER_HTML = fs.existsSync(path.join(viewsPath, 'loader/index.html')) ? fs.readFileSync(path.join(viewsPath, 'loader/index.html'), 'utf8') : `<h1>Loader</h1>`;
 const TRAP_HTML = fs.existsSync(path.join(viewsPath, 'trap/index.html')) ? fs.readFileSync(path.join(viewsPath, 'trap/index.html'), 'utf8') : `<!DOCTYPE html><html><head><title>403</title></head><body style="background:#0a0a0f;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif"><div style="text-align:center"><h1 style="font-size:60px">🛡️</h1><h2 style="color:#ef4444">Access Denied</h2><p style="color:#666">HTTP 403</p></div></body></html>`;
 
 // === MIDDLEWARE ===
@@ -404,7 +365,10 @@ app.use('/admin/css', express.static(path.join(viewsPath, 'admin/css')));
 app.use('/admin/js', express.static(path.join(viewsPath, 'admin/js')));
 
 app.use(async (req, res, next) => {
-    if (req.path.startsWith('/admin') || req.path === '/health') return next();
+    // Bypass for admin, loader page, health check
+    if (req.path.startsWith('/admin') || req.path === '/health' || req.path === '/loader' || req.path === '/l') return next();
+    
+    // Check ban
     const ban = await db.isBanned(null, getIP(req), null);
     if (ban.blocked) {
         if (getClientType(req) === 'browser') return res.status(403).type('html').send(TRAP_HTML);
@@ -427,13 +391,20 @@ app.get('/health', (req, res) => res.json({ status: 'ok', redis: db.isRedisConne
 
 app.get(['/loader', '/api/loader.lua', '/api/loader', '/l'], async (req, res) => {
     const ct = getClientType(req), ip = getIP(req), hwid = getHWID(req);
-    await logAccess(req, 'LOADER', ct === 'executor', { clientType: ct });
     
+    // Show HTML Page for Browser
+    if (ct === 'browser') {
+        return res.status(200).type('html').send(LOADER_HTML);
+    }
+
+    // Bot/Unknown -> Blocked
     if (shouldBlock(req)) {
-        if (ct === 'browser') return res.status(403).type('html').send(TRAP_HTML);
+        console.log(`[Loader] Blocked ${ct} from ${ip}`);
         return res.status(200).type('text/plain').send(genFakeScript());
     }
     
+    // Executor -> Allow
+    await logAccess(req, 'LOADER', ct === 'executor', { clientType: ct });
     const userId = req.headers['x-roblox-id'];
     const isWL = await checkWhitelist(hwid, userId, req);
     const url = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
@@ -554,7 +525,7 @@ app.post('/api/ban', async (req, res) => {
     res.json({ success: true, banId });
 });
 
-// === ADMIN API ===
+// === ADMIN ROUTES ===
 app.get('/api/admin/stats', adminAuth, async (req, res) => { try { const s = await db.getStats(); res.json({ success: true, stats: s, sessions: SESSIONS.size, ts: new Date().toISOString() }); } catch (e) { res.status(500).json({ success: false, error: 'Failed' }); } });
 app.get('/api/admin/logs', adminAuth, async (req, res) => { const l = await db.getLogs(50); res.json({ success: true, logs: l }); });
 app.get('/api/admin/bans', adminAuth, async (req, res) => { const b = await db.getAllBans(); res.json({ success: true, bans: b }); });
