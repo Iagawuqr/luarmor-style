@@ -178,7 +178,7 @@ const API={
     },
     get(e,p){return this.req(p?e+'?'+new URLSearchParams(p):e)},
     post(e,b){return this.req(e,{method:'POST',body:JSON.stringify(b)})},
-    delete(e,b){return this.req(e,{method:'DELETE',body:b?JSON.stringify(b):null})}
+    delete(e,b){return this.req(e,{method:'DELETE',body:b?JSON.stringify(b):null})} // FIXED: METHOD DELETE
 };
 
 const Auth={
