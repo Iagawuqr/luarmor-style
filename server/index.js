@@ -21,27 +21,46 @@ const suspendedUsers = { hwids: new Map(), userIds: new Map(), sessions: new Map
 
 // ==================== CONSTANTS & PATTERNS ====================
 
-const BOT_PATTERNS = ['python', 'curl', 'wget', 'axios', 'node', 'got', 'undici', 'superagent', 'java', 'okhttp', 'go-http', 'postman', 'insomnia', 'bot', 'crawler', 'spider', 'scraper', 'discord', 'telegram', 'facebook', 'slurp', 'yandex', 'burp', 'fiddler', 'charles', 'nmap', 'sqlmap', 'monitor'];
-const E_HEADERS = ['x-hwid', 'x-roblox-id', 'x-place-id', 'x-job-id', 'x-session-id'];
-const ALLOWED_EXECUTORS = ['synapse', 'script-ware', 'delta', 'fluxus', 'krnl', 'oxygen', 'evon', 'hydrogen', 'vegax', 'trigon', 'comet', 'solara', 'wave', 'zorara', 'codex', 'celery', 'swift', 'electron', 'sentinel', 'coco', 'valyse', 'nihon', 'jjsploit', 'arceus', 'roblox', 'wininet'];
+const BOT_PATTERNS = [
+    'python', 'curl', 'wget', 'axios', 'node', 'got', 'undici', 'superagent', 'java', 'okhttp', 'go-http', 
+    'postman', 'insomnia', 'paw', 'bot', 'crawler', 'spider', 'scraper', 'discord', 'telegram', 'facebook', 
+    'slurp', 'yandex', 'burp', 'fiddler', 'charles', 'mitmproxy', 'nmap', 'nikto', 'sqlmap', 'monitor', 'probe'
+];
+
+const BROWSER_HEADERS = [
+    'sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site', 'sec-ch-ua', 'sec-ch-ua-mobile', 
+    'upgrade-insecure-requests', 'accept-language'
+];
+
+const EXECUTOR_HEADERS = [
+    'x-hwid', 'x-roblox-id', 'x-place-id', 'x-job-id', 'x-session-id'
+];
+
+const ALLOWED_EXECUTORS = [
+    'synapse', 'script-ware', 'scriptware', 'delta', 'fluxus', 'krnl', 'oxygen', 'evon', 'hydrogen', 
+    'vegax', 'trigon', 'comet', 'solara', 'wave', 'zorara', 'codex', 'celery', 'swift', 'sirhurt', 
+    'electron', 'sentinel', 'coco', 'temple', 'valyse', 'nihon', 'jjsploit', 'arceus', 'roblox', 'wininet', 'win32'
+];
 
 // ==================== UTILITY FUNCTIONS ====================
 
-function getIP(req) {
-    return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || '0.0.0.0';
-}
-
-function getHWID(req) {
-    return req.headers['x-hwid'] || req.body?.hwid || null;
-}
+function hmac(d, k) { return crypto.createHmac('sha256', k).update(d).digest('hex'); }
 
 function secureCompare(a, b) {
     if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
     try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
 }
 
-function genSessionKey(u, h, t, s) {
-    return crypto.createHmac('sha256', s).update(`${u}:${h}:${t}`).digest('hex').substring(0, 32);
+function getIP(req) {
+    return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.headers['x-real-ip'] || req.ip || '0.0.0.0';
+}
+
+function getHWID(req) {
+    return req.headers['x-hwid'] || req.body?.hwid || null;
+}
+
+function genSessionKey(userId, hwid, timestamp, secret) {
+    return crypto.createHmac('sha256', secret).update(`${userId}:${hwid}:${timestamp}`).digest('hex').substring(0, 32);
 }
 
 // ==================== CLIENT DETECTION ====================
@@ -49,7 +68,7 @@ function genSessionKey(u, h, t, s) {
 function getClientType(req) {
     const ua = (req.headers['user-agent'] || '').toLowerCase();
     const h = req.headers;
-    const eS = E_HEADERS.filter(x => h[x]).length;
+    const eS = EXECUTOR_HEADERS.filter(x => h[x]).length;
     
     if (BOT_PATTERNS.some(p => ua.includes(p)) && eS === 0) return 'bot';
     if (h['sec-fetch-mode'] || h['upgrade-insecure-requests']) return 'browser';
@@ -73,27 +92,26 @@ function shouldBlock(req) {
     if (req.path === '/health') return false;
     const ua = (req.headers['user-agent'] || '').toLowerCase();
     if (['uptimerobot', 'uptime-kuma', 'better uptime'].some(b => ua.includes(b))) return false;
-    
     const ct = getClientType(req);
     return ['bot', 'browser', 'unknown'].includes(ct);
 }
 
-// ==================== ADVANCED FAKE SCRIPT ====================
-// Menghasilkan ribuan karakter kode sampah yang menyerupai VM Obfuscator
-function genComplexFake() {
-    const rS = l => {
+// ==================== FAKE SCRIPT GENERATOR ====================
+
+function genFakeScript() {
+    const rS = (l) => {
         const c = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_';
         let s = c[Math.floor(Math.random() * 26)];
         for (let i = 1; i < l; i++) s += c[Math.floor(Math.random() * c.length)];
         return s;
     };
-    const rH = l => crypto.randomBytes(l / 2).toString('hex');
-    const v = Array(30).fill(0).map(() => rS(Math.floor(Math.random() * 10) + 8));
+    const rH = (l) => crypto.randomBytes(l / 2).toString('hex');
+    const v = Array(40).fill(0).map(() => rS(Math.floor(Math.random() * 10) + 8));
     
     let fake = `--[[ Luraph Obfuscator v14.4.7 | Build: ${rH(16)} ]]\n`;
     fake += `local ${v[0]}, ${v[1]}, ${v[2]} = function() end, {}, "${rH(64)}";\n`;
     fake += `local ${v[3]} = { `;
-    for (let i = 0; i < 150; i++) { fake += `"${rH(16)}", `; }
+    for (let i = 0; i < 300; i++) { fake += `"${rH(16)}", `; }
     fake += `};\n`;
     fake += `local ${v[4]} = function(${v[5]}) 
         local ${v[6]} = 0;
@@ -103,10 +121,11 @@ function genComplexFake() {
         end;
         return ${v[6]};
     end;\n`;
+    fake += `local ${v[10]} = {`;
+    for(let i=0; i<100; i++) { fake += `[${i}] = "${rH(8)}",`; }
+    fake += `};\n`;
     fake += `if ${v[4]}("${rH(32)}") == ${Math.floor(Math.random()*9999)} then ${v[0]}() end;\n`;
-    fake += `local ${v[8]} = coroutine.wrap(function() while true do coroutine.yield(math.random(1, 0xFF)) end end);\n`;
-    fake += `local ${v[9]} = setmetatable({}, { __index = function(t, k) return "${rH(32)}" end });\n`;
-    fake += `error("Auth Failed: HWID Mismatch (${rH(8)})", 0);\n`;
+    fake += `error("Invalid License or HWID Mismatch (${rH(8)})", 0);\n`;
     fake += `return ${v[3]};`;
     return fake;
 }
@@ -119,7 +138,7 @@ async function logAccess(req, action, success, extra = {}) {
         hwid: getHWID(req) || extra.hwid || 'N/A',
         userId: req.headers['x-roblox-id'] || req.body?.userId || extra.userId || 'N/A',
         ua: (req.headers['user-agent'] || '').substring(0, 150),
-        client: getClientType(req),
+        client: extra.clientType || getClientType(req),
         action: action,
         success: success,
         ts: new Date().toISOString(),
@@ -149,153 +168,100 @@ async function prepareChunks(s, ch) {
     return {
         chunks: chunks.map((x, i) => ({ index: i, data: encryptChunk(x, keys[i]) })),
         keys,
-        total: chunks.length
+        totalChunks: chunks.length
     };
 }
 
-// ==================== SCRIPT WRAPPERS ====================
+// ==================== SUSPEND & SCRIPT HANDLERS ====================
 
-function wrapScript(s, url) {
+function checkSuspended(h, u, sid) {
+    const now = Date.now();
+    const check = (map, key) => {
+        if (map.has(key)) {
+            const data = map.get(key);
+            if (!data.expiresAt || new Date(data.expiresAt).getTime() > now) return { suspended: true, reason: data.reason || 'Suspended' };
+            map.delete(key);
+        }
+        return null;
+    };
+    return check(suspendedUsers.sessions, sid) || check(suspendedUsers.hwids, h) || check(suspendedUsers.userIds, String(u));
+}
+
+async function getScript() {
+    const c = await db.getCachedScript();
+    if (c) return c;
+    if (!config.SCRIPT_SOURCE_URL) return null;
+    try {
+        const res = await axios.get(config.SCRIPT_SOURCE_URL, { timeout: 30000 });
+        if (res.data) { await db.setCachedScript(res.data); return res.data; }
+    } catch (e) { console.error('Script fetch error:', e.message); }
+    return null;
+}
+
+function isObfuscated(s) {
+    if (!s) return false;
+    return [/Luraph/i, /Moonsec/i, /IronBrew/i, /Prometheus/i, /PSU/i].some(r => r.test(s.substring(0, 500)));
+}
+
+// ==================== SCRIPT WRAPPER (ANTI-SPY V4) ====================
+
+function wrapScript(script, serverUrl) {
     const o = (config.OWNER_USER_IDS || []).join(',');
     const w = (config.WHITELIST_USER_IDS || []).join(',');
     const sid = crypto.randomBytes(16).toString('hex');
-    const spy = config.ANTI_SPY_ENABLED !== false;
-    const ab = config.AUTO_BAN_SPYTOOLS === true;
+    const antiSpy = config.ANTI_SPY_ENABLED !== false;
+    const autoBan = config.AUTO_BAN_SPYTOOLS === true;
+    const blacklistedTools = `{ "spy", "dex", "remote", "http", "dumper", "explorer", "infinite", "yield", "iy", "console", "decompile", "saveinstance", "scriptdumper", "dark", "turtle" }`;
 
     return `--[[ Shield Protection Layer v4 ]]
-local _CFG = {
-    o = {${o}}, 
-    w = {${w}}, 
-    bu = "${url}/api/ban", 
-    wu = "${url}/api/webhook/suspicious", 
-    hu = "${url}/api/heartbeat", 
-    sid = "${sid}", 
-    as = ${spy}, 
-    ab = ${ab}, 
-    int = 45
-}
-
-local P = game:GetService("Players")
-local L = P.LocalPlayer
-local G = game:GetService("CoreGui")
-local H = game:GetService("HttpService")
-local A = true
-local S = {}
-local BL = {"spy", "dex", "remote", "http", "dumper", "explorer", "infinite", "yield", "iy", "console", "decompile", "saveinstance", "dark"}
-
-local function hp(u, d)
-    if not request then return end
-    pcall(function() 
-        request({
-            Url = u, 
-            Method = "POST", 
-            Headers = {["Content-Type"]="application/json", ["x-session-id"]=_CFG.sid}, 
-            Body = H:JSONEncode(d)
-        }) 
-    end)
-end
-
-local function cl(m)
-    if not A then return end
-    A = false
-    pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title="Shield", Text=m, Duration=5}) end)
-    task.wait(1)
-    L:Kick(m)
-end
-
-task.spawn(function()
-    pcall(function() for _,g in pairs(G:GetChildren()) do S[g] = true end end)
-    task.wait(2)
-    while A do
-        pcall(function()
-            for _,g in pairs(G:GetChildren()) do
-                if not S[g] then
-                    local n = g.Name:lower()
-                    for _,b in ipairs(BL) do
-                        if n:find(b) and not n:find("roblox") then
-                            hp(_CFG.wu, {userId = L.UserId, tool = g.Name, sessionId = _CFG.sid})
-                            if _CFG.ab then hp(_CFG.bu, {playerId = L.UserId, reason = "Spy Tool: "..g.Name, sessionId = _CFG.sid}) end
-                            cl("Security Violation")
-                        end
-                    end
-                end
-            end
-        end)
-        task.wait(3)
-    end
-end)
-
-task.spawn(function()
-    while A do
-        local r
-        if request then
-            local ok, res = pcall(function()
-                return request({
-                    Url = _CFG.hu, 
-                    Method = "POST", 
-                    Headers = {["Content-Type"]="application/json"}, 
-                    Body = H:JSONEncode({sessionId = _CFG.sid, userId = L.UserId})
-                })
-            end)
-            if ok and res.StatusCode == 200 then r = H:JSONDecode(res.Body) end
-        end
-        if r and r.action == "TERMINATE" then cl(r.reason or "Terminated by Admin") end
-        task.wait(_CFG.int)
-    end
-end)
-
-${s}`;
+local _CFG = {o = {${o}}, w = {${w}}, bu = "${serverUrl}/api/ban", wu = "${serverUrl}/api/webhook/suspicious", hu = "${serverUrl}/api/heartbeat", sid = "${sid}", as = ${antiSpy}, ab = ${autoBan}, hbi = 45}
+local P, L, G, H = game:GetService("Players"), game:GetService("Players").LocalPlayer, game:GetService("CoreGui"), game:GetService("HttpService")
+local A, S, BL = true, {}, ${blacklistedTools}
+local function hp(u, d) if not request then return end pcall(function() request({Url = u, Method = "POST", Headers = {["Content-Type"]="application/json", ["x-session-id"]=_CFG.sid}, Body = H:JSONEncode(d)}) end) end
+local function cl(m) if not A then return end A = false pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title="Shield", Text=m, Duration=5}) end) task.wait(1) L:Kick(m) end
+task.spawn(function() pcall(function() for _,g in pairs(G:GetChildren()) do S[g] = true end end) task.wait(2)
+while A do pcall(function() for _,g in pairs(G:GetChildren()) do if not S[g] then local n = g.Name:lower() for _,b in ipairs(BL) do if n:find(b) and not n:find("roblox") then hp(_CFG.wu, {userId = L.UserId, tool = g.Name, sessionId = _CFG.sid}) if _CFG.ab then hp(_CFG.bu, {playerId = L.UserId, reason = "Spy Tool: "..g.Name, sessionId = _CFG.sid}) end cl("Security Violation") end end end end end) task.wait(3) end end)
+task.spawn(function() while A do local r if request then local ok, res = pcall(function() return request({Url = _CFG.hu, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = H:JSONEncode({sessionId = _CFG.sid, userId = L.UserId})}) end) if ok and res.StatusCode == 200 then r = H:JSONDecode(res.Body) end end if r and r.action == "TERMINATE" then cl(r.reason or "Terminated by Admin") end task.wait(_CFG.int) end end)
+${script}`;
 }
 
 function getLoader(url) {
     return `local S="${url}" local H=game:GetService("HttpService") local P=game:GetService("Players") local L=P.LocalPlayer 
-local function hp(e,d)
-    local r=(syn and syn.request) or request or http_request
-    if not r then return nil end
-    local s,v=pcall(function() return r({Url=S..e, Method="POST", Headers={["Content-Type"]="application/json", ["x-hwid"]=(gethwid and gethwid() or "UNK"), ["x-roblox-id"]=tostring(L.UserId)}, Body=H:JSONEncode(d)}) end)
-    if s and v.StatusCode==200 then return H:JSONDecode(v.Body) end
-    return nil 
-end 
-local function xd(d,k)
-    local r={}
-    for i=1,#d do table.insert(r, string.char(bit32.bxor(d[i], string.byte(k, ((i-1)%#k)+1)))) end
-    return table.concat(r)
-end
+local function hp(e,d) local r=(syn and syn.request) or request or http_request if not r then return nil end
+local s,v=pcall(function() return r({Url=S..e, Method="POST", Headers={["Content-Type"]="application/json", ["x-hwid"]=(gethwid and gethwid() or "UNK"), ["x-roblox-id"]=tostring(L.UserId)}, Body=H:JSONEncode(d)}) end)
+if s and v.StatusCode==200 then return H:JSONDecode(v.Body) end return nil end 
+local function xd(d,k) local r={} for i=1,#d do table.insert(r, string.char(bit32.bxor(d[i], string.byte(k, ((i-1)%#k)+1)))) end return table.concat(r) end
 local c=hp("/api/auth/challenge", {userId=L.UserId, hwid=(gethwid and gethwid() or "UNK"), placeId=game.PlaceId})
-if c and c.success then
-    local sol=0
-    if c.type=="math" then local p=c.puzzle; sol=(p.a+p.b)*p.c end
-    local v=hp("/api/auth/verify", {challengeId=c.challengeId, solution=sol, timestamp=os.time()})
-    if v and v.success then
-        local s; if v.mode=="chunked" then local t={} for _,x in ipairs(v.chunks) do t[x.index+1]=xd(x.data, v.keys[x.index+1]) end s=table.concat(t) else s=v.script end
-        local f,e=loadstring(s) if f then f() else warn(e) end
-    end
-end`;
+if c and c.success then local sol=0 if c.type=="math" then local p=c.puzzle; sol=(p.a+p.b)*p.c end
+local v=hp("/api/auth/verify", {challengeId=c.challengeId, solution=sol, timestamp=os.time()})
+if v and v.success then local s; if v.mode=="chunked" then local t={} for _,x in ipairs(v.chunks) do t[x.index+1]=xd(x.data, v.keys[x.index+1]) end s=table.concat(t) else s=v.script end
+local f,e=loadstring(s) if f then f() else warn(e) end end end`;
 }
 
 // ==================== MIDDLEWARE & SETUP ====================
 
-const vP = path.join(__dirname, 'views');
-const TRAP = fs.existsSync(path.join(vP, 'trap/index.html')) ? fs.readFileSync(path.join(vP, 'trap/index.html'), 'utf8') : '<h1>403 Forbidden</h1>';
-const HTML_PAGE = fs.existsSync(path.join(vP, 'loader/index.html')) ? fs.readFileSync(path.join(vP, 'loader/index.html'), 'utf8') : '<h1>Loader</h1>';
+const viewsPath = path.join(__dirname, 'views');
+const TRAP_HTML = fs.existsSync(path.join(viewsPath, 'trap/index.html')) ? fs.readFileSync(path.join(viewsPath, 'trap/index.html'), 'utf8') : '<h1>403 Forbidden</h1>';
+const LOADER_HTML_PAGE = fs.existsSync(path.join(viewsPath, 'loader/index.html')) ? fs.readFileSync(path.join(viewsPath, 'loader/index.html'), 'utf8') : '<h1>Loader</h1>';
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
 
-// 1. STRICT BAN CHECK MIDDLEWARE (IP FIRST)
+// 1. STRICT GLOBAL BAN CHECK (FIX: Always check IP Ban first)
 app.use(async (req, res, next) => {
-    const p = req.path;
-    if (p.startsWith(config.ADMIN_PATH || '/admin') || p === '/health') return next();
+    const adminPath = config.ADMIN_PATH || '/admin';
+    if (req.path.startsWith(adminPath) || req.path === '/health') return next();
 
     const ip = getIP(req);
     const wl = await isWhitelisted(req);
 
     if (!wl) {
-        const b = await db.isBanned(null, ip, null);
-        if (b.blocked) {
-            await log(req, 'BLOCKED_IP_ACCESS', false, { reason: b.reason });
-            return getClientType(req) === 'browser' ? res.status(403).send(TRAP) : res.send(genComplexFake());
+        const ban = await db.isBanned(null, ip, null);
+        if (ban.blocked) {
+            await logAccess(req, 'BANNED_IP_BLOCK', false, { reason: ban.reason });
+            const ct = getClientType(req);
+            return ct === 'browser' ? res.status(403).send(TRAP_HTML) : res.send(genFakeScript());
         }
     }
     next();
@@ -310,7 +276,7 @@ const adminAuth = (req, res, next) => {
 // ==================== ROUTES ====================
 
 app.get(config.ADMIN_PATH || '/admin', (req, res) => {
-    const f = path.join(vP, 'admin/index.html');
+    const f = path.join(viewsPath, 'admin/index.html');
     fs.existsSync(f) ? res.sendFile(f) : res.status(404).send('Not Found');
 });
 
@@ -320,39 +286,29 @@ app.get(['/loader', '/l'], async (req, res) => {
     const ct = getClientType(req);
     const url = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
 
-    if (ct === 'browser') return res.send(HTML_PAGE);
+    if (ct === 'browser') return res.send(LOADER_HTML_PAGE);
     
     if (shouldBlock(req)) {
-        await log(req, 'BOT_BLOCKED_LOADER', false);
-        return res.send(genComplexFake());
+        await logAccess(req, 'BOT_BLOCKED', false);
+        return res.send(genFakeScript());
     }
 
-    await log(req, 'EXECUTOR_LOADER_FETCH', true);
-    const wl = await isWhitelisted(req);
-    
-    // Send Loader
+    await logAccess(req, 'LOADER_FETCH', true);
     res.send(getLoader(url));
 });
 
 app.post('/api/auth/challenge', async (req, res) => {
-    const ct = getClientType(req);
-    if (shouldBlock(req)) {
-        await log(req, 'BOT_BLOCKED_CHALLENGE', false);
-        return res.send(genComplexFake());
-    }
+    if (shouldBlock(req)) return res.send(genFakeScript());
 
     const { userId, hwid, placeId } = req.body;
-    const uid = parseInt(userId);
-    
-    await log(req, 'AUTH_CHALLENGE_REQ', true, { userId: uid, hwid });
+    await logAccess(req, 'CHALLENGE_REQ', true, { userId, hwid });
 
     const wl = await isWhitelisted(req);
-    const suspStatus = checkSuspended(hwid, uid, null);
-
+    const suspStatus = checkSuspended(hwid, userId, null);
     if (suspStatus) return res.json({ success: false, error: 'Suspended: ' + suspStatus.reason });
     
     if (!wl) {
-        const b = await db.isBanned(hwid, getIP(req), uid);
+        const b = await db.isBanned(hwid, getIP(req), userId);
         if (b.blocked) return res.json({ success: false, error: 'Banned: ' + b.reason });
     }
 
@@ -360,7 +316,7 @@ app.post('/api/auth/challenge', async (req, res) => {
     const chal = { type: 'math', puzzle: { a: Math.floor(Math.random() * 20), b: Math.floor(Math.random() * 10), c: Math.floor(Math.random() * 5), op: '+' } };
     chal.answer = (chal.puzzle.a + chal.puzzle.b) * chal.puzzle.c;
 
-    await db.setChallenge(id, { id, userId: uid, hwid, placeId, whitelisted: wl, ...chal }, 120);
+    await db.setChallenge(id, { id, userId, hwid, placeId, whitelisted: wl, ...chal }, 120);
     res.json({ success: true, challengeId: id, type: chal.type, puzzle: chal.puzzle });
 });
 
@@ -372,26 +328,19 @@ app.post('/api/auth/verify', async (req, res) => {
     await db.deleteChallenge(challengeId);
 
     if (parseInt(solution) !== c.answer) {
-        await log(req, 'AUTH_VERIFY_FAIL', false, { userId: c.userId, reason: 'Wrong Answer' });
-        return res.json({ success: false, error: 'Incorrect' });
+        await logAccess(req, 'VERIFY_FAIL', false, { userId: c.userId });
+        return res.json({ success: false, error: 'Wrong' });
     }
 
-    const src = await db.getCachedScript() || await (async () => {
-        try {
-            const r = await axios.get(config.SCRIPT_SOURCE_URL);
-            if (r.data) { await db.setCachedScript(r.data); return r.data; }
-        } catch (e) { return null; }
-    })();
-
-    if (!src) return res.json({ success: false, error: 'Script Error' });
+    const src = await getScript();
+    if (!src) return res.json({ success: false, error: 'Source Error' });
 
     const sid = crypto.randomBytes(16).toString('hex');
     const url = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
-    
     SESSIONS.set(sid, { hwid: c.hwid, userId: c.userId, created: Date.now(), lastSeen: Date.now() });
     
     webhook.execution({ userId: c.userId, hwid: c.hwid, executor: req.headers['user-agent'] }).catch(() => {});
-    await log(req, 'AUTH_VERIFY_SUCCESS', true, { userId: c.userId, hwid: c.hwid });
+    await logAccess(req, 'VERIFY_SUCCESS', true, { userId: c.userId, hwid: c.hwid });
 
     if (config.CHUNK_DELIVERY !== 'false' && !c.whitelisted) {
         const ck = await prepareChunks(wrap(src, url), c);
@@ -405,13 +354,8 @@ app.post('/api/heartbeat', async (req, res) => {
     const { sessionId, hwid, userId } = req.body;
     const s = SESSIONS.get(sessionId);
     if (s) s.lastSeen = Date.now();
-
     const sp = checkSuspended(hwid, userId, sessionId);
     if (sp) return res.json({ success: false, action: 'TERMINATE', reason: sp.reason });
-
-    const b = await db.isBanned(hwid, getIP(req), userId);
-    if (b.blocked) return res.json({ success: false, action: 'TERMINATE', reason: 'Banned' });
-
     res.json({ success: true, action: 'CONTINUE' });
 });
 
@@ -453,7 +397,8 @@ app.get('/api/admin/sessions', adminAuth, (req, res) => {
 });
 
 app.post('/api/admin/kill-session', adminAuth, async (req, res) => {
-    await suspendUser('session', req.body.sessionId, { reason: 'Killed by Admin' });
+    const data = { reason: 'Killed by Admin', suspendedAt: new Date().toISOString() };
+    suspendedUsers.sessions.set(req.body.sessionId, data);
     SESSIONS.delete(req.body.sessionId);
     res.json({ success: true });
 });
@@ -466,12 +411,19 @@ app.get('/api/admin/suspended', adminAuth, async (req, res) => {
 });
 
 app.post('/api/admin/suspend', adminAuth, async (req, res) => {
-    await suspendUser(req.body.type, req.body.value, { reason: req.body.reason, duration: req.body.duration });
+    const { type, value, reason, duration } = req.body;
+    const d = { reason, suspendedAt: new Date().toISOString(), expiresAt: duration ? new Date(Date.now() + duration * 1000).toISOString() : null };
+    if (type === 'hwid') suspendedUsers.hwids.set(value, d);
+    else if (type === 'userId') suspendedUsers.userIds.set(value, d);
+    await db.addSuspend(type, value, d);
     res.json({ success: true });
 });
 
 app.post('/api/admin/unsuspend', adminAuth, async (req, res) => {
-    await unsuspendUser(req.body.type, req.body.value);
+    const { type, value } = req.body;
+    if (type === 'hwid') suspendedUsers.hwids.delete(value);
+    else if (type === 'userId') suspendedUsers.userIds.delete(value);
+    await db.removeSuspend(type, value);
     res.json({ success: true });
 });
 
@@ -495,9 +447,15 @@ app.post('/api/admin/whitelist/remove', adminAuth, (req, res) => {
     res.json({ success: true });
 });
 
-// START SERVER
+app.use('*', (req, res) => {
+    const ct = getClientType(req);
+    if (ct === 'browser') return res.status(404).send(TRAP_HTML);
+    res.status(403).send(genFakeScript());
+});
+
+// START
 const PORT = process.env.PORT || 3000;
 loadSuspendedFromDB().then(() => {
-    app.listen(PORT, () => console.log('🛡️ Shield v2.0 Live on ' + PORT));
+    app.listen(PORT, '0.0.0.0', () => console.log('🛡️ Shield v2.0 Live on ' + PORT));
     webhook.serverStart().catch(() => {});
 });
