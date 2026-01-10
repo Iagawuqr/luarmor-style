@@ -156,13 +156,14 @@ async function loadSuspendedFromDB() {
     }
 }
 
+// === LOGGING ===
 async function logAccess(r, a, s, d = {}) {
     const log = { ip: getIP(r), hwid: getHWID(r), ua: (r.headers['user-agent'] || '').substring(0, 100), action: a, success: s, client: getClientType(r), ts: new Date().toISOString(), ...d };
     await db.addLog(log);
     return log;
 }
 
-// === SCRIPT & CHALLENGE ===
+// === CHALLENGE ===
 function genChallenge() {
     const types = ['math', 'bitwise', 'sequence', 'sum'];
     const type = types[Math.floor(Math.random() * types.length)];
@@ -174,6 +175,7 @@ function genChallenge() {
     }
 }
 
+// === SCRIPT HANDLING ===
 async function getScript() {
     const c = await db.getCachedScript();
     if (c) return c;
@@ -202,7 +204,7 @@ function wrapScript(s, serverUrl) {
     const autoBan = config.AUTO_BAN_SPYTOOLS === true;
     const blList = `{ "spy", "dex", "remote", "http", "dumper", "explorer", "infinite", "yield", "iy", "console", "decompile", "saveinstance", "scriptdumper", "dark" }`;
 
-    return `--[[ Script Shield Protection Layer ]]
+    return `--[[ Shield Protection Layer ]]
 local _CFG={o={${o}},w={${w}},banUrl="${serverUrl}/api/ban",webhookUrl="${serverUrl}/api/webhook/suspicious",hbUrl="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},ab=${autoBan},hbi=45}
 local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService") local _A=true local _CON={} local _HB_FAIL=0 
 local _SAFE_GUIS={} 
@@ -261,7 +263,10 @@ app.use('/admin/css', express.static(path.join(viewsPath, 'admin/css')));
 app.use('/admin/js', express.static(path.join(viewsPath, 'admin/js')));
 
 app.use(async (req, res, next) => {
-    if (req.path.startsWith('/admin') || req.path === '/health' || req.path === '/loader' || req.path === '/l') return next();
+    // Dynamic Admin Path
+    const adminPath = config.ADMIN_PATH || '/admin';
+    if (req.path.startsWith(adminPath) || req.path === '/health' || req.path === '/loader' || req.path === '/l') return next();
+    
     const ban = await db.isBanned(null, getIP(req), null);
     if (ban.blocked) {
         if (getClientType(req) === 'browser') return res.status(403).type('html').send(TRAP_HTML);
@@ -278,7 +283,9 @@ const adminAuth = (req, res, next) => {
     next();
 };
 
-app.get('/admin', (req, res) => { const f = path.join(viewsPath, 'admin/index.html'); if (fs.existsSync(f)) res.sendFile(f); else res.status(404).send('Not found'); });
+// === ROUTES ===
+const adminPath = config.ADMIN_PATH || '/admin';
+app.get(adminPath, (req, res) => { const f = path.join(viewsPath, 'admin/index.html'); if (fs.existsSync(f)) res.sendFile(f); else res.status(404).send('Not found'); });
 app.get('/health', (req, res) => res.json({ status: 'ok', redis: db.isRedisConnected?.() ?? false }));
 
 app.get(['/loader', '/api/loader.lua', '/api/loader', '/l'], async (req, res) => {
@@ -373,6 +380,7 @@ app.post('/api/ban', async (req, res) => {
     res.json({ success: true, banId });
 });
 
+// === ADMIN API ===
 app.get('/api/admin/stats', adminAuth, async (req, res) => { try { const s = await db.getStats(); res.json({ success: true, stats: s, sessions: SESSIONS.size, ts: new Date().toISOString() }); } catch (e) { res.status(500).json({ success: false, error: 'Failed' }); } });
 app.get('/api/admin/logs', adminAuth, async (req, res) => { const l = await db.getLogs(50); res.json({ success: true, logs: l }); });
 app.post('/api/admin/logs/clear', adminAuth, async (req, res) => { await db.clearLogs(); res.json({ success: true }); });
@@ -394,4 +402,4 @@ app.get('/api/admin/sessions', adminAuth, async (req, res) => { const arr = []; 
 app.use('*', (req, res) => { const ct = getClientType(req); if (ct === 'browser') return res.status(404).type('html').send(TRAP_HTML); res.status(403).type('text/plain').send(genFakeScript()); });
 
 const PORT = process.env.PORT || config.PORT || 3000;
-loadSuspendedFromDB().then(() => { webhook.serverStart().catch(() => {}); app.listen(PORT, '0.0.0.0', () => { console.log(`\n🛡️ Script Shield v2.0 running on port ${PORT}\n📍 Admin: http://localhost:${PORT}/admin\n📦 Loader: http://localhost:${PORT}/loader\n`); }); });
+loadSuspendedFromDB().then(() => { webhook.serverStart().catch(() => {}); app.listen(PORT, '0.0.0.0', () => { console.log(`\n🛡️ Script Shield v2.0 running on port ${PORT}\n📍 Admin: http://localhost:${PORT}${adminPath}\n📦 Loader: http://localhost:${PORT}/loader\n`); }); });
