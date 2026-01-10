@@ -192,36 +192,645 @@ function isObfuscated(s) {
     return [/Luraph/i, /Moonsec/i, /IronBrew/i, /Prometheus/i, /PSU/i].some(r => r.test(s.substring(0, 500)));
 }
 
-// === WRAPPER ===
+// === WRAPPER - FIXED ANTI-SPY ===
 function wrapScript(s, serverUrl) {
-    const o = (config.OWNER_USER_IDS || []).join(',');
-    const w = (config.WHITELIST_USER_IDS || []).join(',');
+    const o = (config.OWNER_USER_IDS || []).map(id => `[${id}]=true`).join(',');
+    const w = (config.WHITELIST_USER_IDS || []).map(id => `[${id}]=true`).join(',');
     const sid = crypto.randomBytes(16).toString('hex');
     const antiSpyEnabled = config.ANTI_SPY_ENABLED !== false;
     const autoBan = config.AUTO_BAN_SPYTOOLS === true;
-    const blList = `{ "spy", "dex", "remote", "http", "dumper", "explorer", "infinite", "yield", "iy", "console", "decompile", "saveinstance", "scriptdumper", "dark" }`;
 
-    return `--[[ Shield Protection Layer ]]
-local _CFG={o={${o}},w={${w}},banUrl="${serverUrl}/api/ban",webhookUrl="${serverUrl}/api/webhook/suspicious",hbUrl="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},ab=${autoBan},hbi=45}
-local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService") local _A=true local _CON={} local _HB_FAIL=0 
-local _SAFE_GUIS={} 
-local _BL=${blList} 
+    return `--[[ Shield Protection Layer v2.1 ]]
 
-local function _n(t,x,d)pcall(function()_SG:SetCore("SendNotification",{Title=t,Text=x,Duration=d or 3})end)end
-local function _hw()local s,r=pcall(function()if gethwid then return gethwid()end;if getexecutorname then return getexecutorname()..tostring(_L.UserId)end;return"NK_"..tostring(_L.UserId)end)return s and r or"UNK"end
-local function _hp(u,d)if not request then return end;pcall(function()request({Url=u,Method="POST",Headers={["Content-Type"]="application/json",["User-Agent"]="Roblox/WinInet",["x-hwid"]=_hw(),["x-roblox-id"]=tostring(_L.UserId),["x-session-id"]=_CFG.sid},Body=_H:JSONEncode(d)})end)end
-local function _isW(u)for _,i in ipairs(_CFG.w)do if u==i then return true end end;return false end
-local function _isO(u)for _,i in ipairs(_CFG.o)do if u==i then return true end end;return false end
-local function _cl(msg)if not _A then return end;_A=false;_n("⚠️",msg or"Script terminated",5);for i=#_CON,1,-1 do pcall(function()_CON[i]:Disconnect()end)end;task.wait(1);if msg then _L:Kick(msg) end end
-local function _checkOwner()for _,p in pairs(_P:GetPlayers())do if _isO(p.UserId) and p~=_L then return false end end;return true end
-local function _startOwnerMonitor()table.insert(_CON,_P.PlayerAdded:Connect(function(p)task.wait(1)if _isO(p.UserId)then _cl("Owner joined the server")end end))end
-local function _takeSnapshot()pcall(function()for _,g in pairs(_CG:GetChildren())do _SAFE_GUIS[g]=true end end)end
-local function _scan()if not _CFG.as or _isW(_L.UserId)then return end;pcall(function()for _,g in pairs(_CG:GetChildren())do if not _SAFE_GUIS[g]then local n=g.Name:lower();for _,b in ipairs(_BL)do if n:find(b)and not n:find("roblox")and not n:find("app")then _hp(_CFG.webhookUrl,{userId=_L.UserId,tool=g.Name,sessionId=_CFG.sid});if _CFG.ab then _hp(_CFG.banUrl,{hwid=_hw(),playerId=_L.UserId,reason="Spy Tool: "..g.Name,sessionId=_CFG.sid})end;_cl("Security Violation: "..g.Name);while true do end end end end end end)end
-local function _startAntiSpy()if not _CFG.as then return end;task.spawn(function()_takeSnapshot();task.wait(1);while _A do _scan();task.wait(3)end end)end
-local function _startHeartbeat()task.spawn(function()task.wait(10);while _A do local res;if request then local s,r=pcall(function()return request({Url=_CFG.hbUrl,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=_H:JSONEncode({sessionId=_CFG.sid,hwid=_hw(),userId=_L.UserId})})end);if s and r and r.StatusCode==200 then res=_H:JSONDecode(r.Body)end end;if res then _HB_FAIL=0;if res.action=="TERMINATE"then _cl(res.reason or "Session terminated by admin");break elseif res.action=="MESSAGE"and res.message then _n("📢",res.message,5)end else _HB_FAIL=_HB_FAIL+1;if _HB_FAIL>=5 then _cl("Connection lost to server");break end end;task.wait(_CFG.hbi)end end)end
+-- ═══════════════════════════════════════════════════════════
+-- CONFIGURATION
+-- ═══════════════════════════════════════════════════════════
+local _CFG = {
+    o = {${o}},
+    w = {${w}},
+    banUrl = "${serverUrl}/api/ban",
+    webhookUrl = "${serverUrl}/api/webhook/suspicious",
+    hbUrl = "${serverUrl}/api/heartbeat",
+    sid = "${sid}",
+    as = ${antiSpyEnabled},
+    ab = ${autoBan},
+    hbi = 45
+}
 
-if not _checkOwner() then _n("⚠️","Owner is in this server!",5);return end
-_startOwnerMonitor();_startAntiSpy();_startHeartbeat();
+-- ═══════════════════════════════════════════════════════════
+-- SERVICES & VARIABLES
+-- ═══════════════════════════════════════════════════════════
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local _ACTIVE = true
+local _CONNECTIONS = {}
+local _HB_FAILS = 0
+local _INITIAL_GUIS = {}
+local _DETECTED_CACHE = {}
+
+-- ═══════════════════════════════════════════════════════════
+-- BLACKLIST - Tools yang akan di-kick jika AKTIF
+-- ═══════════════════════════════════════════════════════════
+local BLACKLIST = {
+    -- Spy Tools
+    "simplespy", "remotespy", "httpspy", "synspy", "mspy",
+    -- Dex/Explorer
+    "dex", "dexv2", "dexv3", "dexv4", "darkdex", "dexexplorer",
+    -- Infinite Yield
+    "infiniteyield", "infinite yield", "iy", "iy_fe",
+    -- Remote/HTTP
+    "remotelogger", "httplogger", "remotedumper",
+    -- Dumper/Decompile
+    "scriptdumper", "dumper", "decompiler", "unluac",
+    "saveinstance", "saveplace",
+    -- Other spy/admin tools
+    "hydroxide", "unnamed", "fates", "fatality",
+    "aspect", "solar", "console", "output",
+    "cmdx", "cmdbar", "adminpanel", "adminmenu"
+}
+
+-- Whitelist - GUI yang aman (Roblox default + executor)
+local SAFE_PATTERNS = {
+    "roblox", "coregui", "topbar", "bubble", "chat",
+    "playerlist", "health", "purchase", "prompt",
+    "notification", "menu", "freecam", "camera"
+}
+
+-- ═══════════════════════════════════════════════════════════
+-- UTILITY FUNCTIONS
+-- ═══════════════════════════════════════════════════════════
+local function Notify(title, text, duration)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = duration or 3
+        })
+    end)
+end
+
+local function GetHWID()
+    local success, result = pcall(function()
+        if gethwid then return gethwid() end
+        if getexecutorname then return getexecutorname() .. tostring(LocalPlayer.UserId) end
+        return "NK_" .. tostring(LocalPlayer.UserId)
+    end)
+    return success and result or "UNKNOWN"
+end
+
+local function HttpPost(url, data)
+    local req = (syn and syn.request) or request or http_request or (http and http.request)
+    if not req then return end
+    pcall(function()
+        req({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["User-Agent"] = "Roblox/WinInet",
+                ["x-hwid"] = GetHWID(),
+                ["x-roblox-id"] = tostring(LocalPlayer.UserId),
+                ["x-session-id"] = _CFG.sid
+            },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+end
+
+local function IsWhitelisted(userId)
+    return _CFG.w[userId] == true
+end
+
+local function IsOwner(userId)
+    return _CFG.o[userId] == true
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- KICK/CLEANUP FUNCTION
+-- ═══════════════════════════════════════════════════════════
+local function Terminate(reason)
+    if not _ACTIVE then return end
+    _ACTIVE = false
+    
+    Notify("🚫 Security", reason or "Terminated", 5)
+    
+    -- Disconnect semua connections
+    for i = #_CONNECTIONS, 1, -1 do
+        pcall(function() _CONNECTIONS[i]:Disconnect() end)
+    end
+    
+    task.wait(0.3)
+    
+    -- Kill character
+    pcall(function()
+        if LocalPlayer.Character then
+            LocalPlayer.Character:BreakJoints()
+        end
+    end)
+    
+    task.wait(0.3)
+    
+    -- Kick player
+    pcall(function()
+        LocalPlayer:Kick(reason or "Security Violation")
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- SPY DETECTION FUNCTIONS
+-- ═══════════════════════════════════════════════════════════
+local function IsSafeGui(name)
+    local lowerName = name:lower()
+    for _, pattern in ipairs(SAFE_PATTERNS) do
+        if lowerName:find(pattern) then
+            return true
+        end
+    end
+    return false
+end
+
+local function IsSpyTool(name)
+    local lowerName = name:lower()
+    
+    -- Skip jika safe pattern
+    if IsSafeGui(name) then
+        return false, nil
+    end
+    
+    -- Check blacklist
+    for _, banned in ipairs(BLACKLIST) do
+        if lowerName:find(banned:lower()) then
+            return true, banned
+        end
+    end
+    
+    -- Check suspicious patterns (GUI dengan nama versi)
+    if lowerName:match("v%d") or lowerName:match("v_%d") then
+        if lowerName:find("spy") or lowerName:find("remote") or lowerName:find("dex") or lowerName:find("dump") then
+            return true, "suspicious_version"
+        end
+    end
+    
+    return false, nil
+end
+
+local function ScanContainer(container, source)
+    if not container then return false end
+    
+    local detected = false
+    
+    pcall(function()
+        for _, gui in pairs(container:GetChildren()) do
+            if gui:IsA("ScreenGui") or gui:IsA("Frame") or gui:IsA("Folder") then
+                local guiName = gui.Name
+                local lowerName = guiName:lower()
+                
+                -- Skip jika sudah ada sebelum script load
+                if _INITIAL_GUIS[lowerName] then
+                    continue
+                end
+                
+                -- Skip jika sudah pernah di-detect (prevent spam)
+                if _DETECTED_CACHE[lowerName] then
+                    continue
+                end
+                
+                local isSpy, matched = IsSpyTool(guiName)
+                if isSpy then
+                    _DETECTED_CACHE[lowerName] = true
+                    detected = true
+                    
+                    print("[Shield] 🚨 DETECTED:", guiName, "| Matched:", matched, "| Source:", source)
+                    
+                    -- Report to server
+                    HttpPost(_CFG.webhookUrl, {
+                        userId = LocalPlayer.UserId,
+                        tool = guiName,
+                        matched = matched,
+                        source = source,
+                        sessionId = _CFG.sid
+                    })
+                    
+                    -- Auto-ban if enabled
+                    if _CFG.ab then
+                        HttpPost(_CFG.banUrl, {
+                            hwid = GetHWID(),
+                            playerId = LocalPlayer.UserId,
+                            reason = "Spy Tool: " .. guiName,
+                            sessionId = _CFG.sid
+                        })
+                    end
+                    
+                    Terminate("Security Violation: " .. guiName)
+                    return true
+                end
+            end
+        end
+    end)
+    
+    return detected
+end
+
+local function ScanNilInstances()
+    if not getnilinstances then return false end
+    
+    local detected = false
+    
+    pcall(function()
+        for _, instance in pairs(getnilinstances()) do
+            if instance:IsA("ScreenGui") then
+                local guiName = instance.Name
+                local lowerName = guiName:lower()
+                
+                if _INITIAL_GUIS[lowerName] or _DETECTED_CACHE[lowerName] then
+                    continue
+                end
+                
+                local isSpy, matched = IsSpyTool(guiName)
+                if isSpy then
+                    _DETECTED_CACHE[lowerName] = true
+                    detected = true
+                    
+                    print("[Shield] 🚨 DETECTED (Hidden):", guiName)
+                    
+                    HttpPost(_CFG.webhookUrl, {
+                        userId = LocalPlayer.UserId,
+                        tool = guiName,
+                        source = "NilInstance",
+                        sessionId = _CFG.sid
+                    })
+                    
+                    if _CFG.ab then
+                        HttpPost(_CFG.banUrl, {
+                            hwid = GetHWID(),
+                            playerId = LocalPlayer.UserId,
+                            reason = "Hidden Spy: " .. guiName,
+                            sessionId = _CFG.sid
+                        })
+                    end
+                    
+                    Terminate("Security Violation: " .. guiName)
+                    return true
+                end
+            end
+        end
+    end)
+    
+    return detected
+end
+
+local function FullScan()
+    if not _CFG.as or IsWhitelisted(LocalPlayer.UserId) then return false end
+    
+    -- Scan CoreGui
+    if ScanContainer(CoreGui, "CoreGui") then return true end
+    
+    -- Scan PlayerGui
+    if LocalPlayer:FindFirstChild("PlayerGui") then
+        if ScanContainer(LocalPlayer.PlayerGui, "PlayerGui") then return true end
+    end
+    
+    -- Scan Nil Instances
+    if ScanNilInstances() then return true end
+    
+    return false
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- INITIAL CHECK - Sebelum script load
+-- ═══════════════════════════════════════════════════════════
+local function TakeSnapshot()
+    pcall(function()
+        -- Snapshot CoreGui
+        for _, gui in pairs(CoreGui:GetChildren()) do
+            _INITIAL_GUIS[gui.Name:lower()] = true
+        end
+        
+        -- Snapshot PlayerGui
+        if LocalPlayer:FindFirstChild("PlayerGui") then
+            for _, gui in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+                _INITIAL_GUIS[gui.Name:lower()] = true
+            end
+        end
+    end)
+end
+
+local function PreCheck()
+    if not _CFG.as or IsWhitelisted(LocalPlayer.UserId) then
+        return true -- Allowed to continue
+    end
+    
+    print("[Shield] 🔍 Running pre-check for active spy tools...")
+    
+    -- Cek apakah ada spy tool yang SUDAH AKTIF sebelum script ini load
+    local foundSpy = false
+    
+    pcall(function()
+        -- Check CoreGui
+        for _, gui in pairs(CoreGui:GetChildren()) do
+            local isSpy, matched = IsSpyTool(gui.Name)
+            if isSpy then
+                foundSpy = true
+                print("[Shield] 🚨 PRE-CHECK FAILED:", gui.Name, "already active!")
+                
+                HttpPost(_CFG.webhookUrl, {
+                    userId = LocalPlayer.UserId,
+                    tool = gui.Name,
+                    matched = matched,
+                    source = "PreCheck",
+                    sessionId = _CFG.sid
+                })
+                
+                if _CFG.ab then
+                    HttpPost(_CFG.banUrl, {
+                        hwid = GetHWID(),
+                        playerId = LocalPlayer.UserId,
+                        reason = "Pre-existing Spy: " .. gui.Name,
+                        sessionId = _CFG.sid
+                    })
+                end
+                
+                return
+            end
+        end
+        
+        -- Check PlayerGui
+        if LocalPlayer:FindFirstChild("PlayerGui") then
+            for _, gui in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+                local isSpy, matched = IsSpyTool(gui.Name)
+                if isSpy then
+                    foundSpy = true
+                    print("[Shield] 🚨 PRE-CHECK FAILED:", gui.Name, "already active!")
+                    
+                    HttpPost(_CFG.webhookUrl, {
+                        userId = LocalPlayer.UserId,
+                        tool = gui.Name,
+                        source = "PreCheck",
+                        sessionId = _CFG.sid
+                    })
+                    
+                    if _CFG.ab then
+                        HttpPost(_CFG.banUrl, {
+                            hwid = GetHWID(),
+                            playerId = LocalPlayer.UserId,
+                            reason = "Pre-existing Spy: " .. gui.Name,
+                            sessionId = _CFG.sid
+                        })
+                    end
+                    
+                    return
+                end
+            end
+        end
+        
+        -- Check nil instances
+        if getnilinstances then
+            for _, instance in pairs(getnilinstances()) do
+                if instance:IsA("ScreenGui") then
+                    local isSpy, matched = IsSpyTool(instance.Name)
+                    if isSpy then
+                        foundSpy = true
+                        print("[Shield] 🚨 PRE-CHECK FAILED (Hidden):", instance.Name)
+                        
+                        HttpPost(_CFG.webhookUrl, {
+                            userId = LocalPlayer.UserId,
+                            tool = instance.Name,
+                            source = "PreCheck_Nil",
+                            sessionId = _CFG.sid
+                        })
+                        
+                        if _CFG.ab then
+                            HttpPost(_CFG.banUrl, {
+                                hwid = GetHWID(),
+                                playerId = LocalPlayer.UserId,
+                                reason = "Hidden Pre-existing Spy: " .. instance.Name,
+                                sessionId = _CFG.sid
+                            })
+                        end
+                        
+                        return
+                    end
+                end
+            end
+        end
+    end)
+    
+    if foundSpy then
+        Terminate("Spy tool detected - Script blocked")
+        return false
+    end
+    
+    print("[Shield] ✅ Pre-check passed - No active spy tools")
+    return true
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- OWNER PROTECTION
+-- ═══════════════════════════════════════════════════════════
+local function CheckOwnerPresence()
+    for _, player in pairs(Players:GetPlayers()) do
+        if IsOwner(player.UserId) and player ~= LocalPlayer then
+            return false
+        end
+    end
+    return true
+end
+
+local function StartOwnerMonitor()
+    table.insert(_CONNECTIONS, Players.PlayerAdded:Connect(function(player)
+        task.wait(1)
+        if IsOwner(player.UserId) and _ACTIVE then
+            Terminate("Owner joined the server")
+        end
+    end))
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- ANTI-SPY MONITOR (Real-time)
+-- ═══════════════════════════════════════════════════════════
+local function StartAntiSpy()
+    if not _CFG.as then return end
+    
+    -- Take snapshot setelah pre-check
+    TakeSnapshot()
+    
+    -- Monitor CoreGui ChildAdded (real-time detection)
+    table.insert(_CONNECTIONS, CoreGui.ChildAdded:Connect(function(child)
+        task.wait(0.1)
+        if not _ACTIVE then return end
+        
+        local guiName = child.Name
+        local lowerName = guiName:lower()
+        
+        -- Skip jika sudah di-snapshot atau sudah detect
+        if _INITIAL_GUIS[lowerName] or _DETECTED_CACHE[lowerName] then return end
+        
+        local isSpy, matched = IsSpyTool(guiName)
+        if isSpy then
+            _DETECTED_CACHE[lowerName] = true
+            
+            print("[Shield] 🚨 REALTIME DETECTED:", guiName)
+            
+            HttpPost(_CFG.webhookUrl, {
+                userId = LocalPlayer.UserId,
+                tool = guiName,
+                matched = matched,
+                source = "Realtime",
+                sessionId = _CFG.sid
+            })
+            
+            if _CFG.ab then
+                HttpPost(_CFG.banUrl, {
+                    hwid = GetHWID(),
+                    playerId = LocalPlayer.UserId,
+                    reason = "Spy Tool: " .. guiName,
+                    sessionId = _CFG.sid
+                })
+            end
+            
+            Terminate("Security Violation: " .. guiName)
+        end
+    end))
+    
+    -- Monitor PlayerGui jika ada
+    if LocalPlayer:FindFirstChild("PlayerGui") then
+        table.insert(_CONNECTIONS, LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
+            task.wait(0.1)
+            if not _ACTIVE then return end
+            
+            local guiName = child.Name
+            local lowerName = guiName:lower()
+            
+            if _INITIAL_GUIS[lowerName] or _DETECTED_CACHE[lowerName] then return end
+            
+            local isSpy, matched = IsSpyTool(guiName)
+            if isSpy then
+                _DETECTED_CACHE[lowerName] = true
+                
+                print("[Shield] 🚨 REALTIME DETECTED (PlayerGui):", guiName)
+                
+                HttpPost(_CFG.webhookUrl, {
+                    userId = LocalPlayer.UserId,
+                    tool = guiName,
+                    source = "Realtime_PlayerGui",
+                    sessionId = _CFG.sid
+                })
+                
+                if _CFG.ab then
+                    HttpPost(_CFG.banUrl, {
+                        hwid = GetHWID(),
+                        playerId = LocalPlayer.UserId,
+                        reason = "Spy Tool: " .. guiName,
+                        sessionId = _CFG.sid
+                    })
+                end
+                
+                Terminate("Security Violation: " .. guiName)
+            end
+        end))
+    end
+    
+    -- Periodic full scan (backup, setiap 5 detik)
+    task.spawn(function()
+        task.wait(3)
+        while _ACTIVE do
+            FullScan()
+            task.wait(5)
+        end
+    end)
+    
+    print("[Shield] 👁️ Anti-spy monitor started")
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- HEARTBEAT
+-- ═══════════════════════════════════════════════════════════
+local function StartHeartbeat()
+    task.spawn(function()
+        task.wait(10)
+        while _ACTIVE do
+            local response
+            local req = (syn and syn.request) or request or http_request or (http and http.request)
+            
+            if req then
+                local success, result = pcall(function()
+                    return req({
+                        Url = _CFG.hbUrl,
+                        Method = "POST",
+                        Headers = {
+                            ["Content-Type"] = "application/json",
+                            ["x-session-id"] = _CFG.sid
+                        },
+                        Body = HttpService:JSONEncode({
+                            sessionId = _CFG.sid,
+                            hwid = GetHWID(),
+                            userId = LocalPlayer.UserId
+                        })
+                    })
+                end)
+                
+                if success and result and result.StatusCode == 200 then
+                    local ok, body = pcall(function()
+                        return HttpService:JSONDecode(result.Body)
+                    end)
+                    if ok then response = body end
+                end
+            end
+            
+            if response then
+                _HB_FAILS = 0
+                if response.action == "TERMINATE" then
+                    Terminate(response.reason or "Session terminated")
+                    break
+                elseif response.action == "MESSAGE" and response.message then
+                    Notify("📢 Message", response.message, 5)
+                end
+            else
+                _HB_FAILS = _HB_FAILS + 1
+                if _HB_FAILS >= 5 then
+                    Terminate("Connection lost to server")
+                    break
+                end
+            end
+            
+            task.wait(_CFG.hbi)
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- MAIN EXECUTION
+-- ═══════════════════════════════════════════════════════════
+
+-- Step 1: Check owner presence
+if not CheckOwnerPresence() then
+    Notify("⚠️ Warning", "Owner is in this server!", 5)
+    return
+end
+
+-- Step 2: Pre-check untuk spy tools yang sudah aktif
+if not PreCheck() then
+    -- Jika ada spy tool aktif, script tidak akan load
+    return
+end
+
+-- Step 3: Start protections
+StartOwnerMonitor()
+StartAntiSpy()
+StartHeartbeat()
+
+Notify("🛡️ Shield", "Protection active", 3)
+print("[Shield] 🛡️ Protection active for user:", LocalPlayer.UserId)
+print("[Shield] 📋 Session ID:", _CFG.sid)
+
+-- ═══════════════════════════════════════════════════════════
+-- YOUR SCRIPT LOADS HERE (only if all checks passed)
+-- ═══════════════════════════════════════════════════════════
+
 ${s}`;
 }
 
@@ -258,15 +867,12 @@ app.use(rateLimit({ windowMs: 60000, max: 100, keyGenerator: r => getIP(r) }));
 app.use('/admin/css', express.static(path.join(viewsPath, 'admin/css')));
 app.use('/admin/js', express.static(path.join(viewsPath, 'admin/js')));
 
-// === MIDDLEWARE - Skip loader karena di-handle terpisah ===
+// === MIDDLEWARE ===
 app.use(async (req, res, next) => {
     const adminPath = config.ADMIN_PATH || '/admin';
     if (req.path.startsWith(adminPath) || req.path === '/health') return next();
-    
-    // Skip ban check untuk loader karena akan di-handle di endpoint-nya langsung
     if (req.path === '/loader' || req.path === '/l' || req.path === '/api/loader' || req.path === '/api/loader.lua') return next();
     
-    // Check Ban untuk endpoint lainnya
     const ban = await db.isBanned(null, getIP(req), null);
     if (ban.blocked) {
         if (getClientType(req) === 'browser') return res.status(403).type('html').send(TRAP_HTML);
@@ -287,77 +893,43 @@ const adminPath = config.ADMIN_PATH || '/admin';
 app.get(adminPath, (req, res) => { const f = path.join(viewsPath, 'admin/index.html'); if (fs.existsSync(f)) res.sendFile(f); else res.status(404).send('Not found'); });
 app.get('/health', (req, res) => res.json({ status: 'ok', redis: db.isRedisConnected?.() ?? false }));
 
-// =====================================================
-// === FIXED LOADER ENDPOINT - DUAL BOT HANDLING ===
-// =====================================================
+// === LOADER ENDPOINT - DUAL BOT HANDLING ===
 app.get(['/loader', '/api/loader.lua', '/api/loader', '/l'], async (req, res) => {
     const ct = getClientType(req);
     const ip = getIP(req);
     const hwid = getHWID(req);
     const userId = req.headers['x-roblox-id'] || null;
     
-    // ═══════════════════════════════════════════════════════════
-    // PRIORITY 1: Cek BAN (IP/HWID/UserID) → Return 403 ERROR
-    // Bot yang sudah di-ban akan mendapat error, bukan fake script
-    // ═══════════════════════════════════════════════════════════
+    // PRIORITY 1: Cek BAN → 403 Error
     const ban = await db.isBanned(hwid, ip, userId);
     if (ban.blocked) {
-        console.log(`[Loader] 🚫 BANNED ACCESS BLOCKED - IP: ${ip}, HWID: ${hwid}, UserID: ${userId}, Reason: ${ban.reason}`);
-        await logAccess(req, 'LOADER_BANNED', false, { 
-            clientType: ct, 
-            ip, 
-            hwid, 
-            userId,
-            banReason: ban.reason 
-        });
+        console.log(`[Loader] 🚫 BANNED - IP: ${ip}, Reason: ${ban.reason}`);
+        await logAccess(req, 'LOADER_BANNED', false, { clientType: ct, ip, hwid, userId, banReason: ban.reason });
         
-        // Browser yang di-ban = 403 + TRAP_HTML
-        if (ct === 'browser') {
-            return res.status(403).type('html').send(TRAP_HTML);
-        }
-        
-        // Bot/Executor yang di-ban = 403 JSON Error (blocked total)
-        return res.status(403).json({ 
-            success: false, 
-            error: 'Access Denied', 
-            code: 'BANNED',
-            message: 'Your access has been permanently revoked.'
-        });
+        if (ct === 'browser') return res.status(403).type('html').send(TRAP_HTML);
+        return res.status(403).json({ success: false, error: 'Access Denied', code: 'BANNED', message: 'Your access has been permanently revoked.' });
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // PRIORITY 2: Browser normal = tampilkan loader page HTML
-    // ═══════════════════════════════════════════════════════════
-    if (ct === 'browser') {
-        return res.status(200).type('html').send(LOADER_HTML);
-    }
+    // PRIORITY 2: Browser → Loader HTML
+    if (ct === 'browser') return res.status(200).type('html').send(LOADER_HTML);
     
-    // ═══════════════════════════════════════════════════════════
-    // PRIORITY 3: Bot terdeteksi (tidak di-ban) = Fake Script
-    // Bot akan tertipu mengira dapat script asli
-    // ═══════════════════════════════════════════════════════════
+    // PRIORITY 3: Bot (not banned) → Fake Script
     if (shouldBlock(req)) {
-        console.log(`[Loader] 🤖 BOT DETECTED (not banned) - Type: ${ct}, IP: ${ip} → Sending Fake Script`);
+        console.log(`[Loader] 🤖 BOT DETECTED - Type: ${ct}, IP: ${ip} → Fake Script`);
         await logAccess(req, 'LOADER_BOT_FAKE', false, { clientType: ct, ip });
         return res.status(200).type('text/plain').send(genFakeScript());
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // PRIORITY 4: Executor valid = berikan loader asli
-    // ═══════════════════════════════════════════════════════════
-    console.log(`[Loader] ✅ Valid executor access - IP: ${ip}, UserID: ${userId}`);
+    // PRIORITY 4: Valid executor → Real Loader
+    console.log(`[Loader] ✅ Valid executor - IP: ${ip}, UserID: ${userId}`);
     await logAccess(req, 'LOADER', true, { clientType: ct, userId });
     
     const isWL = await checkWhitelist(hwid, userId, req);
     const url = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
     
-    if (config.ENCODE_LOADER !== false && !isWL) {
-        res.type('text/plain').send(getEncodedLoader(url, req));
-    } else {
-        res.type('text/plain').send(getLoader(url));
-    }
+    if (config.ENCODE_LOADER !== false && !isWL) res.type('text/plain').send(getEncodedLoader(url, req));
+    else res.type('text/plain').send(getLoader(url));
 });
-// =====================================================
 
 app.post('/api/auth/challenge', async (req, res) => {
     const ct = getClientType(req);
@@ -430,9 +1002,10 @@ app.post('/api/heartbeat', async (req, res) => {
 });
 
 app.post('/api/webhook/suspicious', async (req, res) => {
-    const { userId, hwid, tool, sessionId } = req.body;
-    await logAccess(req, 'SUSPICIOUS', false, { userId, hwid, tool });
-    webhook.suspicious({ userId, hwid, ip: getIP(req), reason: 'Spy tool detected', tool, action: config.AUTO_BAN_SPYTOOLS ? 'Auto-banned' : 'Kicked' }).catch(() => {});
+    const { userId, hwid, tool, sessionId, source, matched } = req.body;
+    console.log(`[Webhook] 🚨 Suspicious activity - User: ${userId}, Tool: ${tool}, Source: ${source}, Matched: ${matched}`);
+    await logAccess(req, 'SUSPICIOUS', false, { userId, hwid, tool, source, matched });
+    webhook.suspicious({ userId, hwid, ip: getIP(req), reason: 'Spy tool detected: ' + tool, tool, action: config.AUTO_BAN_SPYTOOLS ? 'Auto-banned' : 'Kicked' }).catch(() => {});
     res.json({ success: true });
 });
 
@@ -444,6 +1017,7 @@ app.post('/api/ban', async (req, res) => {
     if (hwid) await db.addBan(hwid, { hwid, ...banData });
     if (playerId) await db.addBan(String(playerId), { playerId, ...banData });
     if (sessionId) SESSIONS.delete(sessionId);
+    console.log(`[Ban] 🔨 User banned - HWID: ${hwid}, PlayerID: ${playerId}, Reason: ${reason}`);
     await logAccess(req, 'BAN_ADDED', true, { hwid, playerId, reason });
     webhook.ban({ userId: playerId, hwid, ip: getIP(req), reason, bannedBy: 'System', banId }).catch(() => {});
     res.json({ success: true, banId });
@@ -471,4 +1045,4 @@ app.get('/api/admin/sessions', adminAuth, async (req, res) => { const arr = []; 
 app.use('*', (req, res) => { const ct = getClientType(req); if (ct === 'browser') return res.status(404).type('html').send(TRAP_HTML); res.status(403).type('text/plain').send(genFakeScript()); });
 
 const PORT = process.env.PORT || config.PORT || 3000;
-loadSuspendedFromDB().then(() => { webhook.serverStart().catch(() => {}); app.listen(PORT, '0.0.0.0', () => { console.log(`\n🛡️ Script Shield v2.0 running on port ${PORT}\n📍 Admin: http://localhost:${PORT}${adminPath}\n📦 Loader: http://localhost:${PORT}/loader\n`); }); });
+loadSuspendedFromDB().then(() => { webhook.serverStart().catch(() => {}); app.listen(PORT, '0.0.0.0', () => { console.log(`\n🛡️ Script Shield v2.1 running on port ${PORT}\n📍 Admin: http://localhost:${PORT}${adminPath}\n📦 Loader: http://localhost:${PORT}/loader\n`); }); });
