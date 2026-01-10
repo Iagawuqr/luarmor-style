@@ -163,36 +163,267 @@ const o = (config.OWNER_USER_IDS || []).map(id => `[${id}]=true`).join(',');
 const w = (config.WHITELIST_USER_IDS || []).map(id => `[${id}]=true`).join(',');
 const sid = crypto.randomBytes(16).toString('hex');
 const antiSpyEnabled = config.ANTI_SPY_ENABLED !== false;
-return `--[[Shield v2.2]]local _CFG={o={${o}},w={${w}},wh="${serverUrl}/api/webhook/suspicious",hb="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},hbi=45} local PS=game:GetService("Players") local CG=game:GetService("CoreGui") local SG=game:GetService("StarterGui") local HS=game:GetService("HttpService") local LP=PS.LocalPlayer local _A=true local _C={} local _HF=0 local _IS={} local _DC={}
-local GB={"simplespy","remotespy","httpspy","synspy","mspy","dex","dexv2","dexv3","dexv4","darkdex","dexexplorer","infiniteyield","infinite yield","iy_fe","iycmd","spy","logger","dumper","decompiler","hydroxide","unnamed esp","fates","fatality","aspect","solar","saveinstance","scriptdumper","remotedumper"}
-local GC={{v="IY_LOADED",n="Infinite Yield"},{v="IY_SETTINGS",n="Infinite Yield"},{v="iy",n="Infinite Yield"},{v="IYMouse",n="Infinite Yield"},{v="PluginsTable",n="Infinite Yield"},{v="Notification",n="Infinite Yield"},{v="COREGUI",n="Infinite Yield"},{v="Dex",n="Dex Explorer"},{v="DexExplorer",n="Dex Explorer"},{v="dloaded",n="Dex Explorer"},{v="SimpleSpy",n="SimpleSpy"},{v="SimpleSpyExecuted",n="SimpleSpy"},{v="ss_init",n="SimpleSpy"},{v="RemoteSpy",n="RemoteSpy"},{v="rspy",n="RemoteSpy"},{v="Hydroxide",n="Hydroxide"},{v="oh",n="Hydroxide"},{v="SPYLOADED",n="Spy Tool"},{v="HttpSpy",n="HTTP Spy"}}
-local SP={"roblox","coregui","topbar","bubble","chat","playerlist","health","purchase","prompt","freecam","notification","menu","camera","backpack","inventory"}
+return `--[[Shield v2.3]]
+local _CFG={o={${o}},w={${w}},wh="${serverUrl}/api/webhook/suspicious",hb="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},hbi=45}
+local PS=game:GetService("Players")
+local CG=game:GetService("CoreGui")
+local SG=game:GetService("StarterGui")
+local HS=game:GetService("HttpService")
+local LP=PS.LocalPlayer
+local _A=true
+local _C={}
+local _HF=0
+local _SS={}
+local _DC={}
+
 local function NT(t,x,d) pcall(function() SG:SetCore("SendNotification",{Title=t,Text=x,Duration=d or 3}) end) end
 local function GH() local s,r=pcall(function() if gethwid then return gethwid() end if getexecutorname then return getexecutorname()..tostring(LP.UserId) end return "NK_"..tostring(LP.UserId) end) return s and r or "UNK" end
 local function HP(u,d) local rq=(syn and syn.request)or request or http_request or(http and http.request) if not rq then return end pcall(function() rq({Url=u,Method="POST",Headers={["Content-Type"]="application/json",["User-Agent"]="Roblox/WinInet",["x-hwid"]=GH(),["x-roblox-id"]=tostring(LP.UserId),["x-session-id"]=_CFG.sid},Body=HS:JSONEncode(d)}) end) end
 local function IW(u) return _CFG.w[u]==true end
 local function IO(u) return _CFG.o[u]==true end
-local function TM(r,tn) if not _A then return end _A=false print("[Shield] TERM:",r) HP(_CFG.wh,{userId=LP.UserId,tool=tn or r,reason=r,source="AntiSpy",sessionId=_CFG.sid,hwid=GH()}) NT("Security",r or "Terminated",3) for i=#_C,1,-1 do pcall(function() _C[i]:Disconnect() end) end task.wait(0.5) pcall(function() if LP.Character then LP.Character:BreakJoints() end end) task.wait(0.5) pcall(function() LP:Kick(r or "Security Violation") end) end
-local function ISG(n) local ln=n:lower() for _,p in ipairs(SP) do if ln:find(p) then return true end end return false end
-local function IBG(n) local ln=n:lower() for _,b in ipairs(GB) do if ln:find(b:lower()) then return true,b end end return false,nil end
-local function CGS() for _,c in ipairs(GC) do local s,e=pcall(function() return getfenv()[c.v]~=nil or _G[c.v]~=nil or shared[c.v]~=nil end) if s and e then return true,c.n,c.v end local s2,e2=pcall(function() if rawget(_G,c.v)~=nil then return true end if rawget(shared,c.v)~=nil then return true end return false end) if s2 and e2 then return true,c.n,c.v end end return false,nil,nil end
-local function CIY() local s,f=pcall(function() for _,v in pairs(CG:GetDescendants()) do local n=v.Name:lower() if n:find("cmdbox") or n:find("commandbox") or n:find("iy_") or n:find("infinite") or n:find("yield") or n:find("cmdbar") then return true end end return false end) if s and f then return true,"Infinite Yield UI" end local ig={"IY_LOADED","IY_SETTINGS","COREGUI","Notification","PluginsTable","IYMouse"} for _,g in ipairs(ig) do local s2,e2=pcall(function() return _G[g]~=nil or getfenv()[g]~=nil end) if s2 and e2 then return true,"Infinite Yield ("..g..")" end end return false,nil end
-local function CDX() local dg={"Dex","DexExplorer","dloaded","PropertiesFrame","ExplorerPanel"} for _,g in ipairs(dg) do local s,e=pcall(function() return _G[g]~=nil or getfenv()[g]~=nil end) if s and e then return true,"Dex Explorer ("..g..")" end end local s2,f2=pcall(function() for _,v in pairs(CG:GetDescendants()) do local n=v.Name:lower() if n:find("dex") or (n:find("explorer") and n:find("properties")) or n:find("propertiesframe") or n:find("explorerframe") then return true end end return false end) if s2 and f2 then return true,"Dex Explorer UI" end return false,nil end
-local function CSS() local sg={"SimpleSpy","SimpleSpyExecuted","ss_init","ss"} for _,g in ipairs(sg) do local s,e=pcall(function() return _G[g]~=nil or getfenv()[g]~=nil end) if s and e then return true,"SimpleSpy ("..g..")" end end local s2,f2=pcall(function() for _,v in pairs(CG:GetDescendants()) do local n=v.Name:lower() if n:find("simplespy") or (n:find("spy") and v:IsA("TextBox")) then return true end end return false end) if s2 and f2 then return true,"SimpleSpy UI" end return false,nil end
-local function CRS() local rg={"RemoteSpy","rspy","HttpSpy","httpspy","SPYLOADED"} for _,g in ipairs(rg) do local s,e=pcall(function() return _G[g]~=nil or getfenv()[g]~=nil end) if s and e then return true,"Remote/HTTP Spy ("..g..")" end end return false,nil end
-local function CCS() local s,e=pcall(function() return _G.Hydroxide~=nil or _G.oh~=nil or shared.Hydroxide~=nil end) if s and e then return true,"Hydroxide" end return false,nil end
-local function SCT() local ct={CG} if LP:FindFirstChild("PlayerGui") then table.insert(ct,LP.PlayerGui) end for _,c in ipairs(ct) do local det=false pcall(function() for _,g in pairs(c:GetDescendants()) do if g:IsA("ScreenGui") or g:IsA("Frame") or g:IsA("TextButton") or g:IsA("TextBox") then local gn=g.Name local ln=gn:lower() if ISG(gn) then continue end if _IS[ln] then continue end if _DC[ln] then continue end local ib,mt=IBG(gn) if ib then _DC[ln]=true det=true return end end end end) if det then return true end end return false end
-local function SNI() if not getnilinstances then return false,nil end local s,r=pcall(function() for _,i in pairs(getnilinstances()) do if i:IsA("ScreenGui") or i:IsA("Frame") then local n=i.Name local ln=n:lower() if ISG(n) then continue end if _DC[ln] then continue end local ib,mt=IBG(n) if ib then _DC[ln]=true return n,mt end end end return nil,nil end) if s and r then return true,r end return false,nil end
-local function FDC() if not _CFG.as or IW(LP.UserId) then return false,nil end local iy,iyn=CIY() if iy then return true,iyn end local dx,dxn=CDX() if dx then return true,dxn end local ss,ssn=CSS() if ss then return true,ssn end local rs,rsn=CRS() if rs then return true,rsn end local cs,csn=CCS() if cs then return true,csn end local gf,gn,gv=CGS() if gf then return true,gn.." (var: "..gv..")" end local gc=SCT() if gc then return true,"Blacklisted GUI" end local nf,nn=SNI() if nf then return true,nn end return false,nil end
-local function TSS() pcall(function() for _,g in pairs(CG:GetDescendants()) do if g:IsA("ScreenGui") or g:IsA("Frame") then _IS[g.Name:lower()]=true end end if LP:FindFirstChild("PlayerGui") then for _,g in pairs(LP.PlayerGui:GetDescendants()) do if g:IsA("ScreenGui") or g:IsA("Frame") then _IS[g.Name:lower()]=true end end end end) end
-local function SRM() table.insert(_C,CG.DescendantAdded:Connect(function(d) task.defer(function() if not _A then return end if d:IsA("ScreenGui") or d:IsA("Frame") then local n=d.Name local ln=n:lower() if ISG(n) then return end if _IS[ln] then return end if _DC[ln] then return end local ib,mt=IBG(n) if ib then _DC[ln]=true TM("Spy Tool: "..n,n) end end end) end)) if LP:FindFirstChild("PlayerGui") then table.insert(_C,LP.PlayerGui.DescendantAdded:Connect(function(d) task.defer(function() if not _A then return end if d:IsA("ScreenGui") or d:IsA("Frame") then local n=d.Name local ln=n:lower() if ISG(n) then return end if _IS[ln] then return end if _DC[ln] then return end local ib,mt=IBG(n) if ib then _DC[ln]=true TM("Spy Tool: "..n,n) end end end) end)) end end
-local function SPS() task.spawn(function() task.wait(2) while _A do local dt,tn=FDC() if dt then TM("Spy Tool: "..tn,tn) break end task.wait(3) end end) end
-local function COP() for _,p in pairs(PS:GetPlayers()) do if IO(p.UserId) and p~=LP then return false end end return true end
-local function SOM() table.insert(_C,PS.PlayerAdded:Connect(function(p) task.wait(1) if IO(p.UserId) and _A then TM("Owner joined","OwnerProtection") end end)) end
-local function SHB() task.spawn(function() task.wait(10) while _A do local res local rq=(syn and syn.request)or request or http_request or(http and http.request) if rq then local s,r=pcall(function() return rq({Url=_CFG.hb,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=HS:JSONEncode({sessionId=_CFG.sid,hwid=GH(),userId=LP.UserId})}) end) if s and r and r.StatusCode==200 then local ok,bd=pcall(function() return HS:JSONDecode(r.Body) end) if ok then res=bd end end end if res then _HF=0 if res.action=="TERMINATE" then TM(res.reason or "Session terminated","Heartbeat") break elseif res.action=="MESSAGE" and res.message then NT("Message",res.message,5) end else _HF=_HF+1 if _HF>=5 then TM("Connection lost","Heartbeat") break end end task.wait(_CFG.hbi) end end) end
+
+local function TM(r,tn)
+if not _A then return end
+_A=false
+HP(_CFG.wh,{userId=LP.UserId,tool=tn or r,reason=r,sessionId=_CFG.sid,hwid=GH()})
+NT("Security",r or "Terminated",3)
+for i=#_C,1,-1 do pcall(function() _C[i]:Disconnect() end) end
+task.wait(0.5)
+pcall(function() if LP.Character then LP.Character:BreakJoints() end end)
+task.wait(0.5)
+pcall(function() LP:Kick(r or "Security Violation") end)
+end
+
+local function IsToolGui(gui)
+if not gui then return false,nil end
+local dominated=false
+pcall(function()
+if not gui:IsA("ScreenGui") and not gui:IsA("Frame") then return end
+if gui:FindFirstAncestorOfClass("ScreenGui") then
+local sg=gui:FindFirstAncestorOfClass("ScreenGui")
+if sg and sg.Enabled==false then return end
+end
+if gui:IsA("ScreenGui") and gui.Enabled==false then return end
+local n=gui.Name:lower()
+local dominated_names={"simplespy","remotespy","httpspy","synspy","infiniteyield","infinite_yield","iy_main","iy_fe","dex","dexexplorer","darkdex","hydroxide","remotelogger","scriptdumper"}
+for _,dn in ipairs(dominated_names) do
+if n:find(dn) then
+dominated=true
+return
+end
+end
+local child_count=0
+pcall(function() child_count=#gui:GetDescendants() end)
+if child_count<3 then return end
+local has_textbox=false
+local has_button=false
+local has_scrollframe=false
+local has_codelike=false
+pcall(function()
+for _,v in pairs(gui:GetDescendants()) do
+if v:IsA("TextBox") then has_textbox=true end
+if v:IsA("TextButton") or v:IsA("ImageButton") then has_button=true end
+if v:IsA("ScrollingFrame") then has_scrollframe=true end
+if v:IsA("TextLabel") or v:IsA("TextBox") then
+local txt=(v.Text or ""):lower()
+if txt:find("remote") or txt:find("fire") or txt:find("invoke") or txt:find("spy") or txt:find("log") or txt:find("function") or txt:find("args") or txt:find("event") then
+has_codelike=true
+end
+end
+end
+end)
+if n:find("spy") or n:find("remote") or n:find("logger") or n:find("dump") then
+if has_textbox or has_scrollframe then dominated=true end
+end
+if n:find("dex") or n:find("explorer") then
+if has_scrollframe and has_button then dominated=true end
+end
+if n:find("iy") or n:find("infinite") or n:find("yield") or n:find("cmd") then
+if has_textbox and has_button then dominated=true end
+end
+if has_codelike and has_scrollframe and has_textbox then dominated=true end
+end)
+return dominated,gui.Name
+end
+
+local function ScanForActiveTools()
+if not _CFG.as or IW(LP.UserId) then return false,nil end
+local found=false
+local toolname=nil
+pcall(function()
+for _,gui in pairs(CG:GetChildren()) do
+if gui:IsA("ScreenGui") and gui.Enabled==true then
+local ss_name=gui.Name:lower()
+if _SS[ss_name] then continue end
+if _DC[ss_name] then continue end
+local is_tool,name=IsToolGui(gui)
+if is_tool then
+found=true
+toolname=name
+_DC[ss_name]=true
+return
+end
+end
+end
+end)
+if found then return true,toolname end
+pcall(function()
+if LP:FindFirstChild("PlayerGui") then
+for _,gui in pairs(LP.PlayerGui:GetChildren()) do
+if gui:IsA("ScreenGui") and gui.Enabled==true then
+local ss_name=gui.Name:lower()
+if _SS[ss_name] then continue end
+if _DC[ss_name] then continue end
+local is_tool,name=IsToolGui(gui)
+if is_tool then
+found=true
+toolname=name
+_DC[ss_name]=true
+return
+end
+end
+end
+end
+end)
+if found then return true,toolname end
+pcall(function()
+if getnilinstances then
+for _,inst in pairs(getnilinstances()) do
+if inst:IsA("ScreenGui") then
+local ss_name=inst.Name:lower()
+if _SS[ss_name] then continue end
+if _DC[ss_name] then continue end
+local is_tool,name=IsToolGui(inst)
+if is_tool then
+found=true
+toolname=name
+_DC[ss_name]=true
+return
+end
+end
+end
+end
+end)
+return found,toolname
+end
+
+local function TakeSnapshot()
+pcall(function()
+for _,gui in pairs(CG:GetChildren()) do
+if gui:IsA("ScreenGui") then
+_SS[gui.Name:lower()]=true
+end
+end
+if LP:FindFirstChild("PlayerGui") then
+for _,gui in pairs(LP.PlayerGui:GetChildren()) do
+if gui:IsA("ScreenGui") then
+_SS[gui.Name:lower()]=true
+end
+end
+end
+end)
+end
+
+local function StartMonitor()
+table.insert(_C,CG.ChildAdded:Connect(function(child)
+if not _A then return end
+if not child:IsA("ScreenGui") then return end
+task.wait(0.5)
+if not _A then return end
+local ss_name=child.Name:lower()
+if _SS[ss_name] then return end
+if _DC[ss_name] then return end
+pcall(function()
+if child.Enabled==true then
+local is_tool,name=IsToolGui(child)
+if is_tool then
+_DC[ss_name]=true
+TM("Spy Tool Detected: "..name,name)
+end
+end
+end)
+end))
+if LP:FindFirstChild("PlayerGui") then
+table.insert(_C,LP.PlayerGui.ChildAdded:Connect(function(child)
+if not _A then return end
+if not child:IsA("ScreenGui") then return end
+task.wait(0.5)
+if not _A then return end
+local ss_name=child.Name:lower()
+if _SS[ss_name] then return end
+if _DC[ss_name] then return end
+pcall(function()
+if child.Enabled==true then
+local is_tool,name=IsToolGui(child)
+if is_tool then
+_DC[ss_name]=true
+TM("Spy Tool Detected: "..name,name)
+end
+end
+end)
+end))
+end
+task.spawn(function()
+task.wait(5)
+while _A do
+local found,toolname=ScanForActiveTools()
+if found then
+TM("Spy Tool Detected: "..toolname,toolname)
+break
+end
+task.wait(5)
+end
+end)
+end
+
+local function COP()
+for _,p in pairs(PS:GetPlayers()) do
+if IO(p.UserId) and p~=LP then return false end
+end
+return true
+end
+
+local function SOM()
+table.insert(_C,PS.PlayerAdded:Connect(function(p)
+task.wait(1)
+if IO(p.UserId) and _A then TM("Owner joined","OwnerProtection") end
+end))
+end
+
+local function SHB()
+task.spawn(function()
+task.wait(15)
+while _A do
+local res
+local rq=(syn and syn.request)or request or http_request or(http and http.request)
+if rq then
+local s,r=pcall(function()
+return rq({Url=_CFG.hb,Method="POST",Headers={["Content-Type"]="application/json",["x-session-id"]=_CFG.sid},Body=HS:JSONEncode({sessionId=_CFG.sid,hwid=GH(),userId=LP.UserId})})
+end)
+if s and r and r.StatusCode==200 then
+local ok,bd=pcall(function() return HS:JSONDecode(r.Body) end)
+if ok then res=bd end
+end
+end
+if res then
+_HF=0
+if res.action=="TERMINATE" then TM(res.reason or "Terminated","Heartbeat") break
+elseif res.action=="MESSAGE" and res.message then NT("Message",res.message,5) end
+else
+_HF=_HF+1
+if _HF>=5 then TM("Connection lost","Heartbeat") break end
+end
+task.wait(_CFG.hbi)
+end
+end)
+end
+
 if not COP() then NT("Warning","Owner in server!",5) return end
-local pd,pt=FDC() if pd then TM("Spy Already Active: "..pt,pt) return end
-TSS() SOM() SRM() SPS() SHB() NT("Shield","Protection active",3)
+TakeSnapshot()
+SOM()
+StartMonitor()
+SHB()
+NT("Shield","Protection active",3)
 ${s}`;
 }
 
@@ -312,9 +543,9 @@ res.json({ success: true, action: 'CONTINUE' });
 });
 
 app.post('/api/webhook/suspicious', async (req, res) => {
-const { userId, hwid, tool, sessionId, source, reason } = req.body;
-console.log(`[Webhook] SUSPICIOUS - User: ${userId}, Tool: ${tool}, Source: ${source}`);
-await logAccess(req, 'SUSPICIOUS', false, { userId, hwid, tool, source, reason });
+const { userId, hwid, tool, sessionId, reason } = req.body;
+console.log(`[Webhook] SPY DETECTED - User: ${userId}, Tool: ${tool}`);
+await logAccess(req, 'SUSPICIOUS', false, { userId, hwid, tool, reason });
 webhook.suspicious({ userId, hwid, ip: getIP(req), reason: reason || 'Spy tool: ' + tool, tool, action: 'Kicked' }).catch(() => {});
 res.json({ success: true });
 });
@@ -354,4 +585,4 @@ app.get('/api/admin/sessions', adminAuth, async (req, res) => { const arr = []; 
 app.use('*', (req, res) => { const ct = getClientType(req); if (ct === 'browser') return res.status(404).type('html').send(TRAP_HTML); res.status(403).type('text/plain').send(genFakeScript()); });
 
 const PORT = process.env.PORT || config.PORT || 3000;
-loadSuspendedFromDB().then(() => { webhook.serverStart().catch(() => {}); app.listen(PORT, '0.0.0.0', () => { console.log(`\n🛡️ Shield v2.2 running on port ${PORT}\n📍 Admin: http://localhost:${PORT}${adminPath}\n📦 Loader: http://localhost:${PORT}/loader\n`); }); });
+loadSuspendedFromDB().then(() => { webhook.serverStart().catch(() => {}); app.listen(PORT, '0.0.0.0', () => { console.log(`\n🛡️ Shield v2.3 running on port ${PORT}\n📍 Admin: http://localhost:${PORT}${adminPath}\n📦 Loader: http://localhost:${PORT}/loader\n`); }); });
