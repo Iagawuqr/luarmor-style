@@ -146,11 +146,34 @@ default: const nums = Array.from({ length: 5 }, () => Math.floor(Math.random() *
 }
 
 async function getScript() {
-const c = await db.getCachedScript();
-if (c) return c;
-if (!config.SCRIPT_SOURCE_URL) return null;
-try { const res = await axios.get(config.SCRIPT_SOURCE_URL, { timeout: 15000 }); if (res.data) { await db.setCachedScript(res.data); return res.data; } } catch (e) { console.error('Script fetch error:', e.message); }
-return null;
+const cached = await db.getCachedScript();
+if (cached) return cached;
+let script = null;
+// Method 1: Base64 dari Redis (untuk HP upload)
+const b64Script = await db.getBase64Script();
+if (b64Script) {
+console.log('[Script] Loaded from Redis (Base64)');
+script = b64Script;
+}
+// Method 2: Encrypted dari Redis
+if (!script && config.SCRIPT_SOURCE === 'redis') {
+script = await db.getEncryptedScript(config.SCRIPT_ENCRYPTION_KEY);
+if (script) console.log('[Script] Loaded from Redis (Encrypted)');
+}
+// Method 3: URL (tidak aman - backup)
+if (!script && config.SCRIPT_SOURCE_URL) {
+console.warn('[Script] WARNING: Using URL method!');
+try {
+const res = await axios.get(config.SCRIPT_SOURCE_URL, { timeout: 15000 });
+script = res.data;
+} catch (e) {
+console.error('[Script] Fetch error:', e.message);
+}
+}
+if (script) {
+await db.setCachedScript(script, 300);
+}
+return script;
 }
 
 function isObfuscated(s) {
