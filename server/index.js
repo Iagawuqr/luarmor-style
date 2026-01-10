@@ -25,7 +25,7 @@ const ALLOWED_E = ['synapse', 'synapsex', 'script-ware', 'scriptware', 'delta', 
 function hmac(d, k) { return crypto.createHmac('sha256', k).update(d).digest('hex'); }
 function secureCompare(a, b) { if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false; try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; } }
 function getIP(r) { return (r.headers['x-forwarded-for'] || '').split(',')[0].trim() || r.headers['x-real-ip'] || r.ip || '0.0.0.0'; }
-function getHWID(r) { return r.headers['x-hwid'] || null; }
+function getHWID(r) { return r.headers['x-hwid'] || (r.body && r.body.hwid) || null; } // Improved HWID fetch
 function genSessionKey(u, h, t, s) { return hmac(`${u}:${h}:${t}`, s).substring(0, 32); }
 
 // === CLIENT DETECTION ===
@@ -58,13 +58,42 @@ function shouldBlock(req) {
     return ['bot', 'browser', 'unknown'].includes(getClientType(req));
 }
 
-// === FAKE SCRIPT & ENCRYPTION ===
+// === ADVANCED FAKE SCRIPT GENERATOR ===
 function genFakeScript() {
-    const rS = (l) => { const c = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < l; i++) s += c[Math.floor(Math.random() * c.length)]; return s; };
+    const rS = (l) => { const c = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'; let s = c[Math.floor(Math.random()*26)]; for (let i = 1; i < l; i++) s += c[Math.floor(Math.random() * c.length)]; return s; };
     const rH = (l) => { let h = ''; for (let i = 0; i < l; i++) h += Math.floor(Math.random() * 16).toString(16); return h; };
-    return `--[[ Protected by Script Shield v2.0 | Hash: ${rH(32)} ]]\nlocal ${rS(6)} = "${rS(32)}";\nlocal ${rS(5)} = function(${rS(4)})\n return string.byte(${rS(4)}) * ${Math.floor(Math.random() * 100)};\nend;\n--[[ Obfuscation applied ]]`;
+    const vars = Array(20).fill(0).map(()=>rS(Math.floor(Math.random()*10)+5));
+    // Mimic Luraph/IronBrew Structure
+    return `--[[ Luraph Obfuscation v14.4.7 | Protected by Script Shield ]]
+local ${vars[0]},${vars[1]},${vars[2]};
+local ${vars[3]} = "${rH(64)}";
+local ${vars[4]} = {
+    "${rH(32)}", "${rH(32)}", "${rH(32)}", "${rH(32)}",
+    "${rH(32)}", "${rH(32)}", "${rH(32)}", "${rH(32)}"
+};
+local ${vars[5]} = function(${vars[6]})
+    local ${vars[7]} = 0;
+    for ${vars[8]} = 1, #${vars[6]} do
+        ${vars[7]} = ${vars[7]} + string.byte(${vars[6]}, ${vars[8]});
+    end
+    return ${vars[7]};
+end;
+local ${vars[9]} = 0;
+while ${vars[9]} < 1000 do
+    ${vars[9]} = ${vars[9]} + 1;
+    if ${vars[5]}(${vars[3]}) == 0 then break end;
+end
+--[[ 
+    Anti-Tamper: Enabled
+    VM: Lua 5.1
+    Session: ${rH(16)}
+]]
+error("Invalid License or HWID Mismatch", 0);
+${vars[0]} = function() return "Garbage Data ${rH(128)}" end;
+`;
 }
 
+// === ENCRYPTION & CHUNK ===
 function encryptLoader(script, key) {
     const kB = Buffer.from(key);
     const sB = Buffer.from(script);
@@ -78,7 +107,6 @@ function genLoaderKey(req) {
     return crypto.createHash('md5').update(c.join(':')).digest('hex').substring(0, 16);
 }
 
-// === CHUNKED DELIVERY ===
 function chunkString(str, size) {
     const chunks = [];
     for (let i = 0; i < str.length; i += size) chunks.push(str.substring(i, i + size));
@@ -156,14 +184,28 @@ async function loadSuspendedFromDB() {
     }
 }
 
-// === LOGGING ===
+// === IMPROVED LOGGING ===
 async function logAccess(r, a, s, d = {}) {
-    const log = { ip: getIP(r), hwid: getHWID(r), ua: (r.headers['user-agent'] || '').substring(0, 100), action: a, success: s, client: getClientType(r), ts: new Date().toISOString(), ...d };
+    // Capture ID from Body or Headers
+    const userId = d.userId || r.body?.userId || r.headers['x-roblox-id'];
+    const hwid = d.hwid || r.body?.hwid || r.headers['x-hwid'];
+    
+    const log = { 
+        ip: getIP(r), 
+        hwid: hwid, 
+        userId: userId, // Capture User ID explicitly
+        ua: (r.headers['user-agent'] || '').substring(0, 100), 
+        action: a, 
+        success: s, 
+        client: getClientType(r), 
+        ts: new Date().toISOString(), 
+        ...d 
+    };
     await db.addLog(log);
     return log;
 }
 
-// === CHALLENGE ===
+// === SCRIPT & CHALLENGE ===
 function genChallenge() {
     const types = ['math', 'bitwise', 'sequence', 'sum'];
     const type = types[Math.floor(Math.random() * types.length)];
@@ -175,7 +217,6 @@ function genChallenge() {
     }
 }
 
-// === SCRIPT HANDLING ===
 async function getScript() {
     const c = await db.getCachedScript();
     if (c) return c;
@@ -204,7 +245,7 @@ function wrapScript(s, serverUrl) {
     const autoBan = config.AUTO_BAN_SPYTOOLS === true;
     const blList = `{ "spy", "dex", "remote", "http", "dumper", "explorer", "infinite", "yield", "iy", "console", "decompile", "saveinstance", "scriptdumper", "dark" }`;
 
-    return `--[[ Shield Protection Layer ]]
+    return `--[[ Script Shield Protection Layer ]]
 local _CFG={o={${o}},w={${w}},banUrl="${serverUrl}/api/ban",webhookUrl="${serverUrl}/api/webhook/suspicious",hbUrl="${serverUrl}/api/heartbeat",sid="${sid}",as=${antiSpyEnabled},ab=${autoBan},hbi=45}
 local _P=game:GetService("Players") local _L=_P.LocalPlayer local _CG=game:GetService("CoreGui") local _SG=game:GetService("StarterGui") local _H=game:GetService("HttpService") local _A=true local _CON={} local _HB_FAIL=0 
 local _SAFE_GUIS={} 
@@ -292,7 +333,7 @@ app.get(['/loader', '/api/loader.lua', '/api/loader', '/l'], async (req, res) =>
     const ct = getClientType(req), ip = getIP(req), hwid = getHWID(req);
     if (ct === 'browser') return res.status(200).type('html').send(LOADER_HTML);
     if (shouldBlock(req)) { console.log(`[Loader] Blocked ${ct} from ${ip}`); return res.status(200).type('text/plain').send(genFakeScript()); }
-    await logAccess(req, 'LOADER', ct === 'executor', { clientType: ct });
+    await logAccess(req, 'LOADER', ct === 'executor', { clientType: ct, userId: req.headers['x-roblox-id'] }); // Log UserID from Header
     const userId = req.headers['x-roblox-id'];
     const isWL = await checkWhitelist(hwid, userId, req);
     const url = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
@@ -314,7 +355,7 @@ app.post('/api/auth/challenge', async (req, res) => {
     if (susp) return res.json({ success: false, error: 'Suspended: ' + susp.reason });
     if (!isWL) { const ban = await db.isBanned(hwid, ip, uid); if (ban.blocked) return res.json({ success: false, error: 'Banned: ' + ban.reason }); }
     if (config.ALLOWED_PLACE_IDS && config.ALLOWED_PLACE_IDS.length > 0 && !config.ALLOWED_PLACE_IDS.includes(pid) && !isWL) return res.status(403).json({ success: false, error: 'Game not authorized' });
-    await logAccess(req, 'CHALLENGE', true, { clientType: ct, whitelisted: isWL, userId: uid });
+    await logAccess(req, 'CHALLENGE', true, { clientType: ct, whitelisted: isWL, userId: uid, hwid: hwid }); // Pass ID explicitly
     const id = crypto.randomBytes(16).toString('hex');
     const chal = genChallenge();
     await db.setChallenge(id, { id, userId: uid, hwid: hwid || 'none', placeId: pid, ip, whitelisted: isWL, ...chal }, 120);
@@ -338,7 +379,7 @@ app.post('/api/auth/verify', async (req, res) => {
     const sessionId = crypto.randomBytes(16).toString('hex');
     SESSIONS.set(sessionId, { hwid: challenge.hwid, ip: challenge.ip, userId: challenge.userId, placeId: challenge.placeId, created: Date.now(), lastSeen: Date.now() });
     webhook.execution({ userId: challenge.userId, hwid: challenge.hwid, placeId: challenge.placeId, ip: challenge.ip, executor: req.headers['user-agent'] }).catch(() => {});
-    await logAccess(req, 'VERIFY_SUCCESS', true, { userId: challenge.userId });
+    await logAccess(req, 'VERIFY_SUCCESS', true, { userId: challenge.userId, hwid: challenge.hwid });
     if (config.CHUNK_DELIVERY !== false || challenge.whitelisted) { const ckd = await prepareChunks(wrapped, challenge); return res.json({ success: true, mode: 'chunked', chunks: ckd.chunks, keys: ckd.keys, sessionId: sessionId }); }
     const isObf = isObfuscated(script) || config.SCRIPT_ALREADY_OBFUSCATED;
     if (isObf) return res.json({ success: true, mode: 'raw', script: wrapped, sessionId });
@@ -348,6 +389,8 @@ app.post('/api/auth/verify', async (req, res) => {
     res.json({ success: true, mode: 'encrypted', key, chunks, sessionId });
 });
 
+// ... (Other endpoints remain same, just ensuring logAccess has data) ...
+// For brevity, ensuring logAccess calls in other endpoints pass data
 app.post('/api/heartbeat', async (req, res) => {
     const { sessionId, hwid, userId } = req.body;
     if (!sessionId) return res.json({ success: true, action: 'CONTINUE' });
