@@ -13,7 +13,7 @@ module.exports = {
     // Path Admin Panel (Ganti jika ingin menyembunyikan panel admin)
     // Contoh: '/panel-rahasia', '/dashboard-admin'
     // Default: '/admin'
-    ADMIN_PATH: process.env.ADMIN_PATH || '/yessy',
+    ADMIN_PATH: process.env.ADMIN_PATH || '/admin',
 
     // Discord Webhook (Untuk notifikasi eksekusi, ban, spy detect)
     DISCORD_WEBHOOK: process.env.DISCORD_WEBHOOK || '',
