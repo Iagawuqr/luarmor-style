@@ -13,7 +13,7 @@ module.exports = {
     // Path Admin Panel (Ganti jika ingin menyembunyikan panel admin)
     // Contoh: '/panel-rahasia', '/dashboard-admin'
     // Default: '/admin'
-    ADMIN_PATH: process.env.ADMIN_PATH || '/admin',
+    ADMIN_PATH: process.env.ADMIN_PATH || '/midd',
 
     // Discord Webhook (Untuk notifikasi eksekusi, ban, spy detect)
     DISCORD_WEBHOOK: process.env.DISCORD_WEBHOOK || '',
@@ -48,7 +48,7 @@ module.exports = {
         : [],
     
     // Wajib punya HWID di header request (Default: true)
-    REQUIRE_HWID: process.env.REQUIRE_HWID !== 'false', 
+    REQUIRE_HWID: process.env.REQUIRE_HWID !== 'true', 
 
     // ==================== PROTEKSI LANJUTAN ====================
     // Set 'true' jika script di SCRIPT_SOURCE_URL sudah diobfuscate (Luraph/IronBrew)
@@ -56,15 +56,15 @@ module.exports = {
     SCRIPT_ALREADY_OBFUSCATED: process.env.SCRIPT_ALREADY_OBFUSCATED === 'true',
 
     // Encode Loader agar tidak mudah dibaca manusia (Anti-Dump Loader)
-    ENCODE_LOADER: process.env.ENCODE_LOADER !== 'false',
+    ENCODE_LOADER: process.env.ENCODE_LOADER !== 'true',
 
     // Kirim script dalam potongan kecil terenkripsi (Anti-Dump Script)
     // Matikan ini (set ke false) jika script Lua Anda error saat di-load
-    CHUNK_DELIVERY: process.env.CHUNK_DELIVERY !== 'false',
+    CHUNK_DELIVERY: process.env.CHUNK_DELIVERY !== 'true',
     CHUNK_COUNT: parseInt(process.env.CHUNK_COUNT) || 3,
 
     // Deteksi Spy Tools (SimpleSpy, Dex, dll)
-    ANTI_SPY_ENABLED: process.env.ANTI_SPY_ENABLED !== 'false',
+    ANTI_SPY_ENABLED: process.env.ANTI_SPY_ENABLED !== 'true',
     
     // Otomatis Ban user jika terdeteksi Spy Tool (Default: false, hanya kick)
     AUTO_BAN_SPYTOOLS: process.env.AUTO_BAN_SPYTOOLS === 'true',
