@@ -1,9 +1,8 @@
-// server/lib/redis.js
 const config = require('./../config');
 const fs = require('fs');
 const path = require('path');
 
-// Setup variabel
+// Setup variável
 let redis = null;
 let useRedis = false;
 
@@ -20,10 +19,11 @@ const memoryStore = {
     challenges: new Map(),
     cache: new Map(),
     suspends: new Map(),
-    stats: { success: 0, challenges: 0, bans: 0 }
+    stats: { success: 0, challenges: 0, bans: 0 },
+    keys: new Map() // NOVO: Armazenamento de keys
 };
 
-// Fungsi File System
+// Funções File System
 function loadFromFile() {
     try {
         if (fs.existsSync(DATA_FILE)) {
@@ -32,7 +32,8 @@ function loadFromFile() {
             if (data.logs) memoryStore.logs = data.logs.slice(0, 1000);
             if (data.stats) memoryStore.stats = data.stats;
             if (data.suspends) Object.entries(data.suspends).forEach(([k, v]) => memoryStore.suspends.set(k, v));
-            console.log(`[Storage] Loaded from file: ${memoryStore.bans.size} bans`);
+            if (data.keys) Object.entries(data.keys).forEach(([k, v]) => memoryStore.keys.set(k, v));
+            console.log(`[Storage] Loaded from file: ${memoryStore.bans.size} bans, ${memoryStore.keys.size} keys`);
         }
     } catch (e) { console.error('Load Error:', e.message); }
 }
@@ -44,6 +45,7 @@ function saveToFile() {
             logs: memoryStore.logs.slice(0, 500),
             stats: memoryStore.stats,
             suspends: Object.fromEntries(memoryStore.suspends),
+            keys: Object.fromEntries(memoryStore.keys),
             savedAt: new Date().toISOString()
         };
         fs.writeFileSync(DATA_FILE, JSON.stringify(data));
@@ -76,9 +78,75 @@ loadFromFile();
     }
 })();
 
-// === EXPORTED FUNCTIONS ===
+// === FUNÇÕES PARA KEYS (NOVO) ===
+async function addKey(key, data) {
+    memoryStore.keys.set(key, data);
+    if (useRedis) await redis.hset('keys', key, JSON.stringify(data));
+    saveToFile();
+    return true;
+}
 
-// 1. Bans
+async function getKey(key) {
+    if (useRedis) {
+        const data = await redis.hget('keys', key);
+        return data ? JSON.parse(data) : null;
+    }
+    return memoryStore.keys.get(key) || null;
+}
+
+async function getAllKeys() {
+    if (useRedis) {
+        try {
+            const all = await redis.hgetall('keys');
+            return Object.values(all || {}).map(v => JSON.parse(v));
+        } catch (e) {
+            return [];
+        }
+    }
+    return Array.from(memoryStore.keys.values());
+}
+
+async function updateKey(key, data) {
+    const existing = await getKey(key);
+    if (!existing) return false;
+    
+    const updated = { ...existing, ...data };
+    memoryStore.keys.set(key, updated);
+    if (useRedis) await redis.hset('keys', key, JSON.stringify(updated));
+    saveToFile();
+    return true;
+}
+
+async function deleteKey(key) {
+    memoryStore.keys.delete(key);
+    if (useRedis) await redis.hdel('keys', key);
+    saveToFile();
+    return true;
+}
+
+async function getKeyStats() {
+    const keys = await getAllKeys();
+    const now = new Date();
+    
+    return {
+        total: keys.length,
+        active: keys.filter(k => k.enabled && new Date(k.expiresAt) > now).length,
+        expired: keys.filter(k => new Date(k.expiresAt) < now).length,
+        disabled: keys.filter(k => !k.enabled).length
+    };
+}
+
+async function findKeyByValue(type, value) {
+    const keys = await getAllKeys();
+    return keys.find(key => {
+        if (type === 'hwid' && key.hwid === value) return true;
+        if (type === 'ip' && key.ip === value) return true;
+        if (type === 'userId' && key.userId === parseInt(value)) return true;
+        return false;
+    });
+}
+
+// === FUNÇÕES EXISTENTES (MANTIDAS) ===
 async function addBan(key, data) {
     memoryStore.stats.bans++;
     memoryStore.bans.set(key, data);
@@ -110,7 +178,6 @@ async function isBanned(hwid, ip, playerId) {
     const keys = [hwid, ip, playerId ? String(playerId) : null].filter(Boolean);
     if (keys.length === 0) return { blocked: false };
 
-    // Cek Redis
     if (useRedis) {
         for (const key of keys) {
             const data = await redis.hget('bans', key);
@@ -121,7 +188,6 @@ async function isBanned(hwid, ip, playerId) {
         }
     }
 
-    // Cek Memory
     for (const key of keys) {
         if (memoryStore.bans.has(key)) {
             const d = memoryStore.bans.get(key);
@@ -158,7 +224,6 @@ async function clearBans() {
     return count;
 }
 
-// 2. Challenges & Auth
 async function setChallenge(id, data, ttl = 120) {
     memoryStore.stats.challenges++;
     memoryStore.challenges.set(id, { ...data, expiresAt: Date.now() + (ttl * 1000) });
@@ -182,7 +247,6 @@ async function deleteChallenge(id) {
     return true;
 }
 
-// 3. Logs & Stats
 async function addLog(log) {
     memoryStore.logs.unshift(log);
     if (memoryStore.logs.length > 1000) memoryStore.logs.length = 1000;
@@ -223,7 +287,6 @@ async function getStats() {
     return { ...memoryStore.stats, bans: memoryStore.bans.size };
 }
 
-// 4. Script Caching
 async function getCachedScript() {
     if (useRedis) return await redis.get('script_cache');
     
@@ -243,7 +306,6 @@ async function setCachedScript(script, ttl = 300) {
     if (useRedis) await redis.setex('script_cache', ttl, script);
 }
 
-// 5. Suspensions (Temporary Bans / Spy Detection)
 async function addSuspend(type, value, data) {
     const key = `${type}:${value}`;
     const entry = { ...data, type, value, createdAt: new Date().toISOString() };
@@ -317,6 +379,15 @@ module.exports = {
     removeSuspend,
     getAllSuspends,
     clearSuspends,
+    
+    // Keys (NOVO)
+    addKey,
+    getKey,
+    getAllKeys,
+    updateKey,
+    deleteKey,
+    getKeyStats,
+    findKeyByValue,
     
     // Utility
     isRedisConnected: () => useRedis && redis && redis.status === 'ready'
