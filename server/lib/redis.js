@@ -1,4 +1,5 @@
-const config = require('../config');
+// server/lib/redis.js
+const config = require('./../config');
 const fs = require('fs');
 const path = require('path');
 
@@ -140,11 +141,21 @@ async function getAllBans() {
     return Array.from(memoryStore.bans.values()).sort((a, b) => new Date(b.ts) - new Date(a.ts));
 }
 
+async function getBanCount() {
+    if (useRedis) {
+        try {
+            return await redis.hlen('bans');
+        } catch (e) {}
+    }
+    return memoryStore.bans.size;
+}
+
 async function clearBans() {
+    const count = memoryStore.bans.size;
     memoryStore.bans.clear();
     if (useRedis) await redis.del('bans');
     saveToFile();
-    return true;
+    return count;
 }
 
 // 2. Challenges & Auth
@@ -206,7 +217,7 @@ async function getStats() {
         return { 
             success: parseInt(suc) || 0, 
             challenges: parseInt(chal) || 0, 
-            bans: memoryStore.bans.size 
+            bans: await getBanCount() 
         };
     }
     return { ...memoryStore.stats, bans: memoryStore.bans.size };
@@ -275,11 +286,38 @@ async function clearSuspends() {
 }
 
 module.exports = {
-    addBan, removeBan, removeBanById, isBanned, getAllBans, clearBans,
-    setChallenge, getChallenge, deleteChallenge,
-    addLog, getLogs, clearLogs,
-    getCachedScript, setCachedScript,
+    // Bans
+    addBan,
+    removeBan,
+    removeBanById,
+    isBanned,
+    getAllBans,
+    getBanCount,
+    clearBans,
+    
+    // Challenges
+    setChallenge,
+    getChallenge,
+    deleteChallenge,
+    
+    // Logs
+    addLog,
+    getLogs,
+    clearLogs,
+    
+    // Script Cache
+    getCachedScript,
+    setCachedScript,
+    
+    // Stats
     getStats,
-    addSuspend, removeSuspend, getAllSuspends, clearSuspends,
-    isRedisConnected: () => useRedis
+    
+    // Suspends
+    addSuspend,
+    removeSuspend,
+    getAllSuspends,
+    clearSuspends,
+    
+    // Utility
+    isRedisConnected: () => useRedis && redis && redis.status === 'ready'
 };
