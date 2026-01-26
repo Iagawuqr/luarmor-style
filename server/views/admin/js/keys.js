@@ -1,513 +1,384 @@
+const crypto = require('crypto');
+const db = require('./redis'); // Usa o Redis.js existente
+
+// Funções auxiliares
+function generateKey() {
+    const segments = [];
+    for (let i = 0; i < 4; i++) {
+        segments.push(crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 4));
+    }
+    return segments.join('-');
+}
+
+function calculateExpiry(days, hours) {
+    const now = Date.now();
+    let expiryMs = 0;
+    
+    if (days && days > 0) expiryMs += days * 24 * 60 * 60 * 1000;
+    if (hours && hours > 0) expiryMs += hours * 60 * 60 * 1000;
+    
+    return expiryMs > 0 ? new Date(now + expiryMs) : null;
+}
+
+function formatExpiry(expiryDate) {
+    if (!expiryDate) return 'Never';
+    const now = new Date();
+    const diff = expiryDate - now;
+    
+    if (diff <= 0) return 'Expired';
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h`;
+    return 'Expired';
+}
+
+// Funções principais de Key Management
 const Keys = {
-    keys: [],
-    searchQuery: '',
-    
-    async init() {
-        await this.loadKeys();
-        this.bindEvents();
-        this.updateStats();
+    // Criar nova key
+    async createKey(options = {}) {
+        const {
+            note = '',
+            createdBy = 'admin',
+            days = 0,
+            hours = 0,
+            uses = 1,
+            hwidLock = false,
+            ipLock = false,
+            userIdLock = false
+        } = options;
+        
+        const keyString = generateKey();
+        const createdAt = new Date().toISOString();
+        const expiresAt = calculateExpiry(days, hours);
+        
+        const keyData = {
+            key: keyString,
+            note,
+            createdBy,
+            createdAt,
+            expiresAt: expiresAt ? expiresAt.toISOString() : null,
+            usesTotal: parseInt(uses) || 1,
+            usesLeft: parseInt(uses) || 1,
+            hwidLock: !!hwidLock,
+            ipLock: !!ipLock,
+            userIdLock: !!userIdLock,
+            activations: [],
+            enabled: true,
+            lastUsed: null,
+            usage: [] // Histórico de uso
+        };
+        
+        // Salvar no Redis
+        await db.addKey(keyString, keyData);
+        
+        return {
+            success: true,
+            key: keyString,
+            data: keyData
+        };
     },
     
-    async loadKeys() {
-        const result = await API.get('/api/admin/keys');
-        if (result.success) {
-            this.keys = result.keys || [];
-            this.renderTable();
-        } else {
-            Utils.toast('Failed to load keys', 'error');
-        }
-    },
-    
-    filterKeys() {
-        if (!this.searchQuery) {
-            return this.keys;
+    // Verificar key
+    async validateKey(keyString, hwid, ip, userId) {
+        const keyData = await db.getKey(keyString);
+        
+        if (!keyData) {
+            return {
+                valid: false,
+                error: 'Invalid key'
+            };
         }
         
-        const query = this.searchQuery.toLowerCase();
-        return this.keys.filter(key => 
-            (key.key && key.key.toLowerCase().includes(query)) ||
-            (key.note && key.note.toLowerCase().includes(query)) ||
-            (key.createdBy && key.createdBy.toLowerCase().includes(query))
-        );
-    },
-    
-    renderTable() {
-        const tbody = document.getElementById('keysTableBody');
-        if (!tbody) return;
-        
-        const filteredKeys = this.filterKeys();
-        
-        if (filteredKeys.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" class="text-center" style="padding: 40px;">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🔑</div>
-                            <h4 class="empty-state-title">No keys found</h4>
-                            <p class="empty-state-text">
-                                ${this.searchQuery ? 'Try a different search term' : 'Create your first key'}
-                            </p>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            return;
+        if (!keyData.enabled) {
+            return {
+                valid: false,
+                error: 'Key disabled'
+            };
         }
         
-        tbody.innerHTML = filteredKeys.map(key => `
-            <tr class="animate-fadeIn">
-                <td>
-                    <code class="text-primary" style="font-weight: bold; font-size: 13px;">${Utils.escapeHtml(key.key)}</code>
-                </td>
-                <td class="text-secondary">${Utils.escapeHtml(key.note || '-')}</td>
-                <td>
-                    <span class="badge ${key.enabled ? 'badge-success' : 'badge-danger'}">
-                        ${key.enabled ? '✅ Active' : '❌ Disabled'}
-                    </span>
-                </td>
-                <td>
-                    <span class="badge ${key.usesLeft > 0 ? 'badge-info' : 'badge-warning'}">
-                        ${key.usesLeft}/${key.usesTotal}
-                    </span>
-                </td>
-                <td>
-                    ${key.expiryFormatted === 'Never' ? 
-                        '<span class="badge badge-secondary">Never</span>' : 
-                        `<span class="badge ${key.expiryFormatted.includes('Expired') ? 'badge-danger' : 'badge-warning'}">
-                            ${key.expiryFormatted}
-                        </span>`
-                    }
-                </td>
-                <td class="text-muted" style="font-size: 12px;">${Utils.formatDate(key.createdAt)}</td>
-                <td>
-                    <div class="cell-stack">
-                        ${key.hwidLock ? '<span class="badge badge-purple" title="HWID Lock">HWID</span>' : ''}
-                        ${key.ipLock ? '<span class="badge badge-info" title="IP Lock">IP</span>' : ''}
-                        ${key.userIdLock ? '<span class="badge badge-warning" title="User ID Lock">UID</span>' : ''}
-                    </div>
-                </td>
-                <td>
-                    <span class="badge ${key.activations.length > 0 ? 'badge-success' : 'badge-secondary'}">
-                        ${key.activations.length}
-                    </span>
-                </td>
-                <td class="text-muted" style="font-size: 12px;">
-                    ${key.lastUsed ? Utils.formatDate(key.lastUsed) : 'Never'}
-                </td>
-                <td>
-                    <div class="table-actions">
-                        <button class="btn btn-ghost btn-sm btn-icon" onclick="Keys.copyKey('${key.key}')" title="Copy Key">
-                            📋
-                        </button>
-                        <button class="btn btn-ghost btn-sm btn-icon" onclick="Keys.showKeyCode('${key.key}')" title="Show Code">
-                            &lt;/&gt;
-                        </button>
-                        <button class="btn btn-${key.enabled ? 'warning' : 'success'} btn-sm btn-icon" 
-                                onclick="Keys.toggleKey('${key.key}', ${!key.enabled})" 
-                                title="${key.enabled ? 'Disable' : 'Enable'}">
-                            ${key.enabled ? '⏸️' : '▶️'}
-                        </button>
-                        <button class="btn btn-danger btn-sm btn-icon" onclick="Keys.deleteKey('${key.key}')" title="Delete">
-                            🗑️
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-    },
-    
-    bindEvents() {
-        const searchInput = document.getElementById('keySearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', Utils.debounce((e) => {
-                this.searchQuery = e.target.value;
-                this.renderTable();
-            }, 300));
+        if (keyData.expiresAt && new Date(keyData.expiresAt) < new Date()) {
+            return {
+                valid: false,
+                error: 'Key expired'
+            };
         }
         
-        const createBtn = document.getElementById('createKeyBtn');
-        if (createBtn) {
-            createBtn.addEventListener('click', () => this.openCreateModal());
-        }
-    },
-    
-    openCreateModal() {
-        const modal = document.getElementById('createKeyModal');
-        if (modal) {
-            modal.classList.add('active');
-            document.getElementById('keyNote').value = '';
-            document.getElementById('keyDays').value = '7';
-            document.getElementById('keyHours').value = '0';
-            document.getElementById('keyUses').value = '1';
-            document.getElementById('keyHwidLock').checked = true;
-            document.getElementById('keyIpLock').checked = false;
-            document.getElementById('keyUserIdLock').checked = false;
-        }
-    },
-    
-    closeCreateModal() {
-        const modal = document.getElementById('createKeyModal');
-        if (modal) modal.classList.remove('active');
-    },
-    
-    async createKey() {
-        const note = document.getElementById('keyNote').value.trim();
-        const days = parseInt(document.getElementById('keyDays').value) || 0;
-        const hours = parseInt(document.getElementById('keyHours').value) || 0;
-        const uses = parseInt(document.getElementById('keyUses').value) || 1;
-        const hwidLock = document.getElementById('keyHwidLock').checked;
-        const ipLock = document.getElementById('keyIpLock').checked;
-        const userIdLock = document.getElementById('keyUserIdLock').checked;
-        
-        if (uses < 1) {
-            Utils.toast('Uses must be at least 1', 'error');
-            return;
+        if (keyData.usesLeft <= 0) {
+            return {
+                valid: false,
+                error: 'No uses left'
+            };
         }
         
-        if (days === 0 && hours === 0 && document.getElementById('keyNeverExpire').checked) {
-            // Never expire option
-        } else if (days === 0 && hours === 0) {
-            Utils.toast('Please set expiration time or check "Never expire"', 'error');
-            return;
-        }
+        // Verificar locks
+        const allKeys = await db.getAllKeys();
         
-        const btn = document.getElementById('createKeySubmitBtn');
-        Utils.setLoading(btn, true);
-        
-        try {
-            const result = await API.post('/api/admin/keys/create', {
-                note,
-                days,
-                hours,
-                uses,
-                hwidLock,
-                ipLock,
-                userIdLock
-            });
+        for (const existingKey of allKeys) {
+            if (existingKey.key === keyString) continue;
             
-            if (result.success) {
-                Utils.toast(`Key created: ${result.key}`, 'success');
-                this.closeCreateModal();
-                
-                // Show new key modal
-                const keyDisplay = document.getElementById('newKeyDisplay');
-                const keyCode = document.getElementById('newKeyCode');
-                
-                if (keyDisplay && keyCode) {
-                    keyDisplay.textContent = result.key;
-                    keyCode.textContent = `_G.key = "${result.key}"`;
-                    document.getElementById('newKeyModal').classList.add('active');
+            for (const activation of existingKey.activations || []) {
+                if (keyData.hwidLock && activation.hwid === hwid && hwid) {
+                    return {
+                        valid: false,
+                        error: 'Key already used on this device'
+                    };
                 }
-                
-                await this.loadKeys();
-                await this.updateStats();
-            } else {
-                Utils.toast(result.error || 'Failed to create key', 'error');
+                if (keyData.ipLock && activation.ip === ip && ip) {
+                    return {
+                        valid: false,
+                        error: 'Key already used from this IP'
+                    };
+                }
+                if (keyData.userIdLock && activation.userId === userId && userId) {
+                    return {
+                        valid: false,
+                        error: 'Key already used by this user'
+                    };
+                }
             }
-        } catch (error) {
-            Utils.toast('Error: ' + error.message, 'error');
-        } finally {
-            Utils.setLoading(btn, false);
         }
+        
+        return {
+            valid: true,
+            keyData
+        };
     },
     
+    // Ativar key
+    async activateKey(keyString, hwid, ip, userId) {
+        const validation = await this.validateKey(keyString, hwid, ip, userId);
+        
+        if (!validation.valid) {
+            return validation;
+        }
+        
+        const keyData = validation.keyData;
+        
+        // Atualizar contador de usos
+        keyData.usesLeft--;
+        keyData.lastUsed = new Date().toISOString();
+        
+        // Registrar ativação
+        const activation = {
+            hwid: hwid || null,
+            ip: ip || null,
+            userId: userId || null,
+            activatedAt: new Date().toISOString()
+        };
+        
+        keyData.activations = keyData.activations || [];
+        keyData.activations.push(activation);
+        
+        // Adicionar ao histórico de uso
+        keyData.usage = keyData.usage || [];
+        keyData.usage.push({
+            action: 'activate',
+            timestamp: new Date().toISOString(),
+            hwid,
+            ip,
+            userId
+        });
+        
+        // Atualizar no Redis
+        await db.updateKey(keyString, keyData);
+        
+        return {
+            success: true,
+            key: keyString,
+            usesLeft: keyData.usesLeft,
+            activation
+        };
+    },
+    
+    // Obter todas as keys
+    async getAllKeys() {
+        const keys = await db.getAllKeys();
+        return keys.map(key => ({
+            ...key,
+            expiryFormatted: formatExpiry(key.expiresAt ? new Date(key.expiresAt) : null)
+        }));
+    },
+    
+    // Obter key específica
+    async getKey(keyString) {
+        const keyData = await db.getKey(keyString);
+        if (keyData) {
+            return {
+                ...keyData,
+                expiryFormatted: formatExpiry(keyData.expiresAt ? new Date(keyData.expiresAt) : null)
+            };
+        }
+        return null;
+    },
+    
+    // Deletar key
     async deleteKey(keyString) {
-        if (!await Utils.confirm(`Delete key ${keyString}?\nThis action cannot be undone!`, 'Delete Key')) {
-            return;
-        }
-        
-        const result = await API.delete(`/api/admin/keys/${encodeURIComponent(keyString)}`);
-        
-        if (result.success) {
-            Utils.toast('Key deleted successfully', 'success');
-            await this.loadKeys();
-            await this.updateStats();
-        } else {
-            Utils.toast(result.error || 'Failed to delete key', 'error');
-        }
+        const deleted = await db.deleteKey(keyString);
+        return deleted;
     },
     
-    async toggleKey(keyString, enable) {
-        const endpoint = enable ? 'enable' : 'disable';
-        const result = await API.post(`/api/admin/keys/${encodeURIComponent(keyString)}/${endpoint}`);
-        
-        if (result.success) {
-            Utils.toast(`Key ${enable ? 'enabled' : 'disabled'}`, 'success');
-            await this.loadKeys();
-        } else {
-            Utils.toast(result.error || 'Failed to toggle key', 'error');
-        }
-    },
-    
-    copyKey(keyString) {
-        navigator.clipboard.writeText(keyString)
-            .then(() => {
-                Utils.toast('Key copied to clipboard', 'success');
-            })
-            .catch(() => {
-                Utils.toast('Failed to copy key', 'error');
+    // Desabilitar key
+    async disableKey(keyString) {
+        const keyData = await db.getKey(keyString);
+        if (keyData) {
+            keyData.enabled = false;
+            keyData.usage = keyData.usage || [];
+            keyData.usage.push({
+                action: 'disable',
+                timestamp: new Date().toISOString(),
+                by: 'admin'
             });
-    },
-    
-    showKeyCode(keyString) {
-        const code = `_G.key = "${keyString}"\nloadstring(game:HttpGet("${window.location.origin}/loader"))()`;
-        
-        const modal = document.getElementById('keyCodeModal');
-        const codeElement = document.getElementById('keyCodeDisplay');
-        
-        if (modal && codeElement) {
-            codeElement.textContent = code;
-            modal.classList.add('active');
+            
+            await db.updateKey(keyString, keyData);
+            return true;
         }
+        return false;
     },
     
-    closeKeyCodeModal() {
-        const modal = document.getElementById('keyCodeModal');
-        if (modal) modal.classList.remove('active');
+    // Habilitar key
+    async enableKey(keyString) {
+        const keyData = await db.getKey(keyString);
+        if (keyData) {
+            keyData.enabled = true;
+            keyData.usage = keyData.usage || [];
+            keyData.usage.push({
+                action: 'enable',
+                timestamp: new Date().toISOString(),
+                by: 'admin'
+            });
+            
+            await db.updateKey(keyString, keyData);
+            return true;
+        }
+        return false;
     },
     
-    copyKeyCode() {
-        const codeElement = document.getElementById('keyCodeDisplay');
-        if (codeElement) {
-            navigator.clipboard.writeText(codeElement.textContent)
-                .then(() => {
-                    Utils.toast('Code copied to clipboard', 'success');
-                })
-                .catch(() => {
-                    Utils.toast('Failed to copy code', 'error');
+    // Obter estatísticas
+    async getUsageStats() {
+        const keys = await db.getAllKeys();
+        const now = new Date();
+        
+        const totalKeys = keys.length;
+        const activeKeys = keys.filter(k => k.enabled && new Date(k.expiresAt) > now).length;
+        const expiredKeys = keys.filter(k => new Date(k.expiresAt) < now).length;
+        
+        let totalActivations = 0;
+        keys.forEach(key => {
+            totalActivations += (key.activations || []).length;
+        });
+        
+        const recentActivations = [];
+        keys.forEach(key => {
+            (key.activations || []).forEach(act => {
+                recentActivations.push({
+                    key: key.key,
+                    ...act
                 });
+            });
+        });
+        
+        recentActivations.sort((a, b) => new Date(b.activatedAt) - new Date(a.activatedAt));
+        
+        return {
+            totalKeys,
+            activeKeys,
+            expiredKeys,
+            totalActivations,
+            recentActivations: recentActivations.slice(0, 10)
+        };
+    },
+    
+    // Obter estatísticas de uma key específica
+    async getKeyStats(keyString) {
+        const keyData = await db.getKey(keyString);
+        if (!keyData) return null;
+        
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        const activationsToday = (keyData.activations || []).filter(a => {
+            const activationDate = new Date(a.activatedAt);
+            return activationDate >= today;
+        }).length;
+        
+        return {
+            totalActivations: (keyData.activations || []).length,
+            activationsToday,
+            lastActivation: keyData.activations?.length > 0 
+                ? keyData.activations[keyData.activations.length - 1] 
+                : null,
+            status: keyData.enabled ? 'active' : 'disabled',
+            expiry: formatExpiry(keyData.expiresAt ? new Date(keyData.expiresAt) : null)
+        };
+    },
+    
+    // Limpar keys expiradas
+    async clearExpiredKeys() {
+        const keys = await db.getAllKeys();
+        const now = new Date();
+        let cleared = 0;
+        
+        for (const key of keys) {
+            if (key.expiresAt && new Date(key.expiresAt) < now) {
+                await db.deleteKey(key.key);
+                cleared++;
+            }
         }
+        
+        return cleared;
     },
     
-    closeNewKeyModal() {
-        const modal = document.getElementById('newKeyModal');
-        if (modal) modal.classList.remove('active');
-    },
-    
-    async updateStats() {
-        try {
-            const result = await API.get('/api/admin/keys/stats/overview');
-            if (result.success) {
-                const stats = result.stats;
-                
-                const statsEl = document.getElementById('keysStats');
-                if (statsEl) {
-                    statsEl.innerHTML = `
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value">${stats.totalKeys}</div>
-                                <div class="stat-label">Total Keys</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" style="color: var(--success)">${stats.activeKeys}</div>
-                                <div class="stat-label">Active Keys</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" style="color: var(--danger)">${stats.expiredKeys}</div>
-                                <div class="stat-label">Expired Keys</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" style="color: var(--primary)">${stats.totalActivations}</div>
-                                <div class="stat-label">Total Activations</div>
-                            </div>
-                        </div>
-                    `;
+    // Verificar se HWID/IP/UserID já está em uso
+    async checkExistingUsage(hwid, ip, userId) {
+        const keys = await db.getAllKeys();
+        const usedKeys = [];
+        
+        for (const key of keys) {
+            for (const activation of key.activations || []) {
+                if (hwid && activation.hwid === hwid) {
+                    usedKeys.push({
+                        key: key.key,
+                        type: 'hwid',
+                        value: hwid,
+                        activatedAt: activation.activatedAt
+                    });
+                }
+                if (ip && activation.ip === ip) {
+                    usedKeys.push({
+                        key: key.key,
+                        type: 'ip',
+                        value: ip,
+                        activatedAt: activation.activatedAt
+                    });
+                }
+                if (userId && activation.userId === userId) {
+                    usedKeys.push({
+                        key: key.key,
+                        type: 'userId',
+                        value: userId,
+                        activatedAt: activation.activatedAt
+                    });
                 }
             }
-        } catch (error) {
-            console.error('Failed to load key stats:', error);
-        }
-    },
-    
-    async refresh() {
-        const btn = document.querySelector('.refresh-keys-btn');
-        if (btn) btn.classList.add('animate-spin');
-        
-        await this.loadKeys();
-        await this.updateStats();
-        
-        if (btn) {
-            setTimeout(() => btn.classList.remove('animate-spin'), 500);
         }
         
-        Utils.toast('Keys refreshed', 'success');
-    },
-    
-    render() {
-        return `
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">🔑 Key Management</h1>
-                    <p class="page-subtitle">Create and manage activation keys for your script</p>
-                </div>
-                <div class="page-actions">
-                    <button class="btn btn-secondary refresh-keys-btn" onclick="Keys.refresh()">
-                        ↻ Refresh
-                    </button>
-                    <button class="btn btn-primary" onclick="Keys.openCreateModal()" id="createKeyBtn">
-                        ➕ Create Key
-                    </button>
-                </div>
-            </div>
-            
-            <div id="keysStats" style="margin-bottom: 24px;"></div>
-            
-            <div class="card animate-fadeInUp">
-                <div class="card-header">
-                    <div class="actions-left">
-                        <div class="search-input-wrapper">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="keySearch" class="form-input" placeholder="Search keys..." style="padding-left: 40px; width: 300px;">
-                        </div>
-                    </div>
-                    <div class="actions-right">
-                        <button class="btn btn-ghost" onclick="Keys.loadKeys()">
-                            Reload
-                        </button>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Key</th>
-                                <th>Note</th>
-                                <th>Status</th>
-                                <th>Uses</th>
-                                <th>Expires</th>
-                                <th>Created</th>
-                                <th>Locks</th>
-                                <th>Activations</th>
-                                <th>Last Used</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="keysTableBody">
-                            <tr>
-                                <td colspan="10" class="text-center" style="padding: 40px;">
-                                    <div class="spinner"></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Create Key Modal -->
-            <div class="modal-overlay" id="createKeyModal">
-                <div class="modal" style="max-width: 600px;">
-                    <div class="modal-header">
-                        <h3 class="modal-title">➕ Create New Key</h3>
-                        <button class="modal-close" onclick="Keys.closeCreateModal()">✕</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">Note (Optional)</label>
-                            <input type="text" id="keyNote" class="form-input" placeholder="e.g., VIP Customer, Beta Tester, etc.">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Expiration</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;">
-                                <div>
-                                    <input type="number" id="keyDays" class="form-input" value="7" min="0" placeholder="Days">
-                                    <p class="form-help">Days</p>
-                                </div>
-                                <div>
-                                    <input type="number" id="keyHours" class="form-input" value="0" min="0" max="23" placeholder="Hours">
-                                    <p class="form-help">Hours</p>
-                                </div>
-                            </div>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="keyNeverExpire">
-                                <span class="checkbox-custom"></span>
-                                <span class="checkbox-text">Never expire</span>
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Number of Uses</label>
-                            <input type="number" id="keyUses" class="form-input" value="1" min="1">
-                            <p class="form-help">How many times this key can be used</p>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Security Locks</label>
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="keyHwidLock" checked>
-                                    <span class="checkbox-custom"></span>
-                                    <span class="checkbox-text">Lock to HWID (Device)</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="keyIpLock">
-                                    <span class="checkbox-custom"></span>
-                                    <span class="checkbox-text">Lock to IP Address</span>
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="keyUserIdLock">
-                                    <span class="checkbox-custom"></span>
-                                    <span class="checkbox-text">Lock to User ID</span>
-                                </label>
-                            </div>
-                            <p class="form-help">Prevents key sharing between devices/users</p>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="Keys.closeCreateModal()">Cancel</button>
-                        <button class="btn btn-primary" id="createKeySubmitBtn" onclick="Keys.createKey()">
-                            Create Key
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- New Key Created Modal -->
-            <div class="modal-overlay" id="newKeyModal">
-                <div class="modal">
-                    <div class="modal-header">
-                        <h3 class="modal-title">🎉 Key Created Successfully</h3>
-                        <button class="modal-close" onclick="Keys.closeNewKeyModal()">✕</button>
-                    </div>
-                    <div class="modal-body">
-                        <div style="text-align: center; padding: 20px;">
-                            <div style="font-size: 48px; margin-bottom: 20px;">🔑</div>
-                            <h4 style="margin-bottom: 10px; color: var(--success);">Your New Key:</h4>
-                            <code id="newKeyDisplay" style="display: block; padding: 15px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; font-size: 18px; font-weight: bold; margin-bottom: 30px; border: 1px solid var(--primary);"></code>
-                            
-                            <h4 style="margin-bottom: 10px;">Usage Instructions:</h4>
-                            <p style="color: var(--text-muted); margin-bottom: 20px;">User must paste this code in their executor:</p>
-                            <pre id="newKeyCode" style="padding: 15px; background: #1a1a2e; border-radius: 8px; overflow-x: auto; text-align: left; font-family: monospace; font-size: 14px; border: 1px solid var(--border);"></pre>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="Keys.closeNewKeyModal()">Close</button>
-                        <button class="btn btn-primary" onclick="Keys.copyKeyCode()">
-                            📋 Copy Code
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Key Code Display Modal -->
-            <div class="modal-overlay" id="keyCodeModal">
-                <div class="modal">
-                    <div class="modal-header">
-                        <h3 class="modal-title">📋 Executor Code</h3>
-                        <button class="modal-close" onclick="Keys.closeKeyCodeModal()">✕</button>
-                    </div>
-                    <div class="modal-body">
-                        <p style="margin-bottom: 15px; color: var(--text-muted);">Copy and give this code to the user:</p>
-                        <pre id="keyCodeDisplay" style="padding: 15px; background: #1a1a2e; border-radius: 8px; overflow-x: auto; text-align: left; font-family: monospace; font-size: 14px; border: 1px solid var(--border);"></pre>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="Keys.closeKeyCodeModal()">Close</button>
-                        <button class="btn btn-primary" onclick="Keys.copyKeyCode()">
-                            📋 Copy Code
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
+        return usedKeys;
     }
 };
+
+// Limpeza automática a cada hora
+setInterval(async () => {
+    try {
+        const cleared = await Keys.clearExpiredKeys();
+        if (cleared > 0) {
+            console.log(`[Keys] Cleared ${cleared} expired keys`);
+        }
+    } catch (error) {
+        console.error('[Keys] Auto-cleanup error:', error.message);
+    }
+}, 3600000); // 1 hora
+
+module.exports = Keys;
