@@ -139,14 +139,16 @@ async function getKeyStats() {
 async function findKeyByValue(type, value) {
     const keys = await getAllKeys();
     return keys.find(key => {
-        if (type === 'hwid' && key.hwid === value) return true;
-        if (type === 'ip' && key.ip === value) return true;
-        if (type === 'userId' && key.userId === parseInt(value)) return true;
+        for (const activation of key.activations || []) {
+            if (type === 'hwid' && activation.hwid === value) return true;
+            if (type === 'ip' && activation.ip === value) return true;
+            if (type === 'userId' && activation.userId === parseInt(value)) return true;
+        }
         return false;
     });
 }
 
-// === FUNÇÕES EXISTENTES (MANTIDAS) ===
+// === FUNÇÕES EXISTENTES ===
 async function addBan(key, data) {
     memoryStore.stats.bans++;
     memoryStore.bans.set(key, data);
