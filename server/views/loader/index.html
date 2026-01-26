@@ -6,7 +6,7 @@
         body {
             background: #0a0a0f;
             color: #fff;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 20px;
             display: flex;
@@ -16,28 +16,58 @@
         }
         .container {
             max-width: 800px;
+            width: 100%;
             background: rgba(30, 30, 40, 0.6);
             border-radius: 12px;
-            padding: 30px;
+            padding: 40px;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
         }
         h1 {
             color: #8b5cf6;
             margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 30px;
+            font-size: 16px;
         }
         .step {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
-            padding: 20px;
+            padding: 25px;
             margin-bottom: 20px;
+            border-left: 4px solid #8b5cf6;
+        }
+        .step h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 20px;
+        }
+        .step-number {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: #8b5cf6;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            margin-right: 10px;
+            font-weight: bold;
         }
         .code {
             background: #1a1a2e;
             padding: 15px;
             border-radius: 8px;
-            font-family: monospace;
+            font-family: 'Consolas', 'Monaco', monospace;
             overflow-x: auto;
-            margin: 10px 0;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
         }
         .note {
             background: rgba(245, 158, 11, 0.1);
@@ -46,50 +76,162 @@
             border-radius: 4px;
             margin: 20px 0;
         }
+        .note strong {
+            color: #f59e0b;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .key-format {
+            background: rgba(139, 92, 246, 0.1);
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px dashed #8b5cf6;
+            margin: 10px 0;
+            font-family: monospace;
+            text-align: center;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background: #7c3aed;
+        }
+        .btn-copy {
+            background: rgba(255, 255, 255, 0.1);
+            margin-left: 10px;
+        }
+        .btn-copy:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔑 Key Protected Loader</h1>
+        <p class="subtitle">Secure script execution with activation keys</p>
         
         <div class="step">
-            <h3>📋 Step 1: Get Your Key</h3>
-            <p>Contact the script owner to get your activation key.</p>
-            <p>Keys look like: <code>2OQI-B6Z8-Q3EQ-K13E</code></p>
+            <h3><span class="step-number">1</span> Get Your Activation Key</h3>
+            <p>Contact the script owner to receive your unique activation key.</p>
+            <div class="key-format">
+                Format: <strong>XXXX-XXXX-XXXX-XXXX</strong><br>
+                Example: <code>2OQI-B6Z8-Q3EQ-K13E</code>
+            </div>
         </div>
         
         <div class="step">
-            <h3>⚡ Step 2: Execute in Roblox</h3>
-            <p>Paste this code in your executor:</p>
+            <h3><span class="step-number">2</span> Execute in Roblox Executor</h3>
+            <p>Paste this code in your executor (Synapse, Script-Ware, etc.):</p>
             <div class="code">
                 _G.key = "YOUR-KEY-HERE"<br>
                 loadstring(game:HttpGet("${window.location.origin}/loader"))()
             </div>
             <div class="note">
-                ⚠️ <strong>Important:</strong> You must set <code>_G.key</code> <strong>BEFORE</strong> executing the loadstring!
+                <strong>⚠️ Important:</strong> You <strong>MUST</strong> set <code>_G.key</code> <strong>BEFORE</strong> executing the loadstring!
+            </div>
+            <button class="btn" onclick="copyCode()">
+                📋 Copy Code
+            </button>
+        </div>
+        
+        <div class="step">
+            <h3><span class="step-number">3</span> Security Features</h3>
+            <div class="feature">
+                <div class="feature-icon">🔐</div>
+                <span><strong>HWID Lock:</strong> One key per device</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">⏱️</div>
+                <span><strong>Time-based Expiry:</strong> Keys expire after set duration</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <span><strong>Usage Limits:</strong> Limited number of activations</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🛡️</div>
+                <span><strong>Anti-Sharing:</strong> Prevents key sharing between users</span>
             </div>
         </div>
         
         <div class="step">
-            <h3>🔒 Security Features</h3>
+            <h3><span class="step-number">4</span> Troubleshooting</h3>
+            <p>If you encounter issues:</p>
             <ul>
-                <li>🔐 One key per device (HWID lock)</li>
-                <li>⏱️ Time-based expiration</li>
-                <li>🎯 Limited number of uses</li>
-                <li>🛡️ Protection against key sharing</li>
+                <li>✅ Make sure you're using the correct key</li>
+                <li>✅ Check if your key has expired</li>
+                <li>✅ Verify you haven't exceeded usage limits</li>
+                <li>✅ Ensure you're on the correct Roblox game</li>
+                <li>✅ Try refreshing the script if connection fails</li>
+                <li>✅ Contact support if problems persist</li>
             </ul>
         </div>
         
-        <div class="step">
-            <h3>❓ Need Help?</h3>
-            <p>If your key isn't working:</p>
-            <ul>
-                <li>Make sure you're using the correct key</li>
-                <li>Check if your key has expired</li>
-                <li>Verify you haven't exceeded usage limits</li>
-                <li>Contact the script owner for support</li>
-            </ul>
+        <div class="note">
+            <strong>📞 Support:</strong> If you need help, contact the script owner with your key and error message.
         </div>
     </div>
+
+    <script>
+        function copyCode() {
+            const code = `_G.key = "YOUR-KEY-HERE"\nloadstring(game:HttpGet("${window.location.origin}/loader"))()`;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                alert('✅ Code copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('✅ Code copied!');
+            });
+        }
+        
+        // Auto-focus on page load
+        window.addEventListener('load', () => {
+            console.log('Loader page loaded');
+        });
+    </script>
 </body>
 </html>
