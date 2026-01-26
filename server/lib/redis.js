@@ -5,6 +5,7 @@ const path = require('path');
 // Setup variável
 let redis = null;
 let useRedis = false;
+let isRedisInitialized = false;
 
 // Setup File Storage (Fallback)
 const dataDir = path.join(__dirname, '..', 'data');
@@ -64,67 +65,138 @@ loadFromFile();
             const Redis = require('ioredis');
             redis = new Redis(config.REDIS_URL, {
                 maxRetriesPerRequest: 3,
+                lazyConnect: true,
+                retryStrategy: (times) => {
+                    const delay = Math.min(times * 100, 3000);
+                    return delay;
+                },
                 tls: config.REDIS_URL.startsWith('rediss://') ? {} : undefined
             });
             
             redis.on('error', (e) => console.error('Redis Error:', e.message));
-            await redis.ping();
-            useRedis = true;
-            console.log('✅ Redis Connected');
+            redis.on('connect', () => {
+                console.log('🔵 Redis connecting...');
+            });
+            redis.on('ready', () => {
+                isRedisInitialized = true;
+                useRedis = true;
+                console.log('✅ Redis Connected');
+            });
+            redis.on('close', () => {
+                console.log('🔴 Redis disconnected');
+                useRedis = false;
+            });
+            
+            // Tentar conectar
+            await redis.connect().catch(() => {
+                console.log('⚠️ Using memory storage (Redis unavailable)');
+                useRedis = false;
+            });
+            
         } catch (e) {
             console.error('❌ Redis Failed:', e.message);
             useRedis = false;
+            isRedisInitialized = true; // Marcar como inicializado mesmo sem Redis
         }
+    } else {
+        isRedisInitialized = true; // Sem Redis, usar memória
+        console.log('📝 Using memory storage (no Redis URL)');
     }
 })();
 
+// Função para aguardar inicialização
+async function waitForInit() {
+    if (isRedisInitialized) return true;
+    
+    return new Promise((resolve) => {
+        const check = () => {
+            if (isRedisInitialized) {
+                resolve(true);
+            } else {
+                setTimeout(check, 100);
+            }
+        };
+        check();
+    });
+}
+
 // === FUNÇÕES PARA KEYS (NOVO) ===
 async function addKey(key, data) {
+    await waitForInit();
     memoryStore.keys.set(key, data);
-    if (useRedis) await redis.hset('keys', key, JSON.stringify(data));
+    if (useRedis && redis) {
+        try {
+            await redis.hset('keys', key, JSON.stringify(data));
+        } catch (e) {
+            console.error('Redis HSET Error:', e.message);
+        }
+    }
     saveToFile();
     return true;
 }
 
 async function getKey(key) {
-    if (useRedis) {
-        const data = await redis.hget('keys', key);
-        return data ? JSON.parse(data) : null;
+    await waitForInit();
+    if (useRedis && redis) {
+        try {
+            const data = await redis.hget('keys', key);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            console.error('Redis HGET Error:', e.message);
+            return memoryStore.keys.get(key) || null;
+        }
     }
     return memoryStore.keys.get(key) || null;
 }
 
 async function getAllKeys() {
-    if (useRedis) {
+    await waitForInit();
+    if (useRedis && redis) {
         try {
             const all = await redis.hgetall('keys');
             return Object.values(all || {}).map(v => JSON.parse(v));
         } catch (e) {
-            return [];
+            console.error('Redis HGETALL Error:', e.message);
+            return Array.from(memoryStore.keys.values());
         }
     }
     return Array.from(memoryStore.keys.values());
 }
 
 async function updateKey(key, data) {
+    await waitForInit();
     const existing = await getKey(key);
     if (!existing) return false;
     
     const updated = { ...existing, ...data };
     memoryStore.keys.set(key, updated);
-    if (useRedis) await redis.hset('keys', key, JSON.stringify(updated));
+    if (useRedis && redis) {
+        try {
+            await redis.hset('keys', key, JSON.stringify(updated));
+        } catch (e) {
+            console.error('Redis HSET Error:', e.message);
+        }
+    }
     saveToFile();
     return true;
 }
 
 async function deleteKey(key) {
+    await waitForInit();
     memoryStore.keys.delete(key);
-    if (useRedis) await redis.hdel('keys', key);
+    if (useRedis && redis) {
+        try {
+            await redis.hdel('keys', key);
+        } catch (e) {
+            console.error('Redis HDEL Error:', e.message);
+        }
+    }
     saveToFile();
     return true;
 }
 
 async function getKeyStats() {
+    await waitForInit();
     const keys = await getAllKeys();
     const now = new Date();
     
@@ -137,6 +209,7 @@ async function getKeyStats() {
 }
 
 async function findKeyByValue(type, value) {
+    await waitForInit();
     const keys = await getAllKeys();
     return keys.find(key => {
         for (const activation of key.activations || []) {
@@ -150,25 +223,46 @@ async function findKeyByValue(type, value) {
 
 // === FUNÇÕES EXISTENTES ===
 async function addBan(key, data) {
+    await waitForInit();
     memoryStore.stats.bans++;
     memoryStore.bans.set(key, data);
-    if (useRedis) await redis.hset('bans', key, JSON.stringify(data));
+    if (useRedis && redis) {
+        try {
+            await redis.hset('bans', key, JSON.stringify(data));
+        } catch (e) {
+            console.error('Redis HSET Error:', e.message);
+        }
+    }
     saveToFile();
     return true;
 }
 
 async function removeBan(key) {
+    await waitForInit();
     memoryStore.bans.delete(key);
-    if (useRedis) await redis.hdel('bans', key);
+    if (useRedis && redis) {
+        try {
+            await redis.hdel('bans', key);
+        } catch (e) {
+            console.error('Redis HDEL Error:', e.message);
+        }
+    }
     saveToFile();
     return true;
 }
 
 async function removeBanById(banId) {
+    await waitForInit();
     for (const [key, value] of memoryStore.bans) {
         if (value.banId === banId) {
             memoryStore.bans.delete(key);
-            if (useRedis) await redis.hdel('bans', key);
+            if (useRedis && redis) {
+                try {
+                    await redis.hdel('bans', key);
+                } catch (e) {
+                    console.error('Redis HDEL Error:', e.message);
+                }
+            }
             saveToFile();
             return true;
         }
@@ -177,16 +271,21 @@ async function removeBanById(banId) {
 }
 
 async function isBanned(hwid, ip, playerId) {
+    await waitForInit();
     const keys = [hwid, ip, playerId ? String(playerId) : null].filter(Boolean);
     if (keys.length === 0) return { blocked: false };
 
-    if (useRedis) {
-        for (const key of keys) {
-            const data = await redis.hget('bans', key);
-            if (data) {
-                const p = JSON.parse(data);
-                return { blocked: true, reason: p.reason || 'Banned', banId: p.banId };
+    if (useRedis && redis) {
+        try {
+            for (const key of keys) {
+                const data = await redis.hget('bans', key);
+                if (data) {
+                    const p = JSON.parse(data);
+                    return { blocked: true, reason: p.reason || 'Banned', banId: p.banId };
+                }
             }
+        } catch (e) {
+            console.error('Redis HGET Error:', e.message);
         }
     }
 
@@ -200,43 +299,68 @@ async function isBanned(hwid, ip, playerId) {
 }
 
 async function getAllBans() {
-    if (useRedis) {
+    await waitForInit();
+    if (useRedis && redis) {
         try {
             const all = await redis.hgetall('bans');
             return Object.values(all).map(v => JSON.parse(v)).sort((a, b) => new Date(b.ts) - new Date(a.ts));
-        } catch (e) {}
+        } catch (e) {
+            console.error('Redis HGETALL Error:', e.message);
+        }
     }
     return Array.from(memoryStore.bans.values()).sort((a, b) => new Date(b.ts) - new Date(a.ts));
 }
 
 async function getBanCount() {
-    if (useRedis) {
+    await waitForInit();
+    if (useRedis && redis) {
         try {
             return await redis.hlen('bans');
-        } catch (e) {}
+        } catch (e) {
+            console.error('Redis HLEN Error:', e.message);
+        }
     }
     return memoryStore.bans.size;
 }
 
 async function clearBans() {
+    await waitForInit();
     const count = memoryStore.bans.size;
     memoryStore.bans.clear();
-    if (useRedis) await redis.del('bans');
+    if (useRedis && redis) {
+        try {
+            await redis.del('bans');
+        } catch (e) {
+            console.error('Redis DEL Error:', e.message);
+        }
+    }
     saveToFile();
     return count;
 }
 
 async function setChallenge(id, data, ttl = 120) {
+    await waitForInit();
     memoryStore.stats.challenges++;
     memoryStore.challenges.set(id, { ...data, expiresAt: Date.now() + (ttl * 1000) });
-    if (useRedis) await redis.setex(`challenge:${id}`, ttl, JSON.stringify(data));
+    if (useRedis && redis) {
+        try {
+            await redis.setex(`challenge:${id}`, ttl, JSON.stringify(data));
+        } catch (e) {
+            console.error('Redis SETEX Error:', e.message);
+        }
+    }
     return true;
 }
 
 async function getChallenge(id) {
-    if (useRedis) {
-        const data = await redis.get(`challenge:${id}`);
-        if (data) return JSON.parse(data);
+    await waitForInit();
+    if (useRedis && redis) {
+        try {
+            const data = await redis.get(`challenge:${id}`);
+            if (data) return JSON.parse(data);
+        } catch (e) {
+            console.error('Redis GET Error:', e.message);
+        }
     }
     const data = memoryStore.challenges.get(id);
     if (data && data.expiresAt > Date.now()) return data;
@@ -244,53 +368,92 @@ async function getChallenge(id) {
 }
 
 async function deleteChallenge(id) {
+    await waitForInit();
     memoryStore.challenges.delete(id);
-    if (useRedis) await redis.del(`challenge:${id}`);
+    if (useRedis && redis) {
+        try {
+            await redis.del(`challenge:${id}`);
+        } catch (e) {
+            console.error('Redis DEL Error:', e.message);
+        }
+    }
     return true;
 }
 
 async function addLog(log) {
+    await waitForInit();
     memoryStore.logs.unshift(log);
     if (memoryStore.logs.length > 1000) memoryStore.logs.length = 1000;
     if (log.success) memoryStore.stats.success++;
     
-    if (useRedis) {
-        await redis.lpush('logs', JSON.stringify(log));
-        await redis.ltrim('logs', 0, 999);
-        if (log.success) await redis.incr('stats:success');
+    if (useRedis && redis) {
+        try {
+            await redis.lpush('logs', JSON.stringify(log));
+            await redis.ltrim('logs', 0, 999);
+            if (log.success) await redis.incr('stats:success');
+        } catch (e) {
+            console.error('Redis LPUSH Error:', e.message);
+        }
     }
     return true;
 }
 
 async function getLogs(limit = 50) {
-    if (useRedis) {
-        const logs = await redis.lrange('logs', 0, limit - 1);
-        return logs.map(l => JSON.parse(l));
+    await waitForInit();
+    if (useRedis && redis) {
+        try {
+            const logs = await redis.lrange('logs', 0, limit - 1);
+            return logs.map(l => JSON.parse(l));
+        } catch (e) {
+            console.error('Redis LRANGE Error:', e.message);
+        }
     }
     return memoryStore.logs.slice(0, limit);
 }
 
 async function clearLogs() {
+    await waitForInit();
     memoryStore.logs = [];
-    if (useRedis) await redis.del('logs');
+    if (useRedis && redis) {
+        try {
+            await redis.del('logs');
+        } catch (e) {
+            console.error('Redis DEL Error:', e.message);
+        }
+    }
     saveToFile();
     return true;
 }
 
 async function getStats() {
-    if (useRedis) {
-        const [suc, chal] = await Promise.all([redis.get('stats:success'), redis.get('stats:challenges')]);
-        return { 
-            success: parseInt(suc) || 0, 
-            challenges: parseInt(chal) || 0, 
-            bans: await getBanCount() 
-        };
+    await waitForInit();
+    if (useRedis && redis) {
+        try {
+            const [suc, chal] = await Promise.all([
+                redis.get('stats:success'), 
+                redis.get('stats:challenges')
+            ]);
+            return { 
+                success: parseInt(suc) || 0, 
+                challenges: parseInt(chal) || 0, 
+                bans: await getBanCount() 
+            };
+        } catch (e) {
+            console.error('Redis GET Error:', e.message);
+        }
     }
     return { ...memoryStore.stats, bans: memoryStore.bans.size };
 }
 
 async function getCachedScript() {
-    if (useRedis) return await redis.get('script_cache');
+    await waitForInit();
+    if (useRedis && redis) {
+        try {
+            return await redis.get('script_cache');
+        } catch (e) {
+            console.error('Redis GET Error:', e.message);
+        }
+    }
     
     const cached = memoryStore.cache.get('script');
     if (cached && cached.expiresAt > Date.now()) return cached.data;
@@ -298,53 +461,88 @@ async function getCachedScript() {
 }
 
 async function setCachedScript(script, ttl = 300) {
+    await waitForInit();
     if (!script) {
         memoryStore.cache.delete('script');
-        if (useRedis) await redis.del('script_cache');
+        if (useRedis && redis) {
+            try {
+                await redis.del('script_cache');
+            } catch (e) {
+                console.error('Redis DEL Error:', e.message);
+            }
+        }
         return;
     }
     
     memoryStore.cache.set('script', { data: script, expiresAt: Date.now() + (ttl * 1000) });
-    if (useRedis) await redis.setex('script_cache', ttl, script);
+    if (useRedis && redis) {
+        try {
+            await redis.setex('script_cache', ttl, script);
+        } catch (e) {
+            console.error('Redis SETEX Error:', e.message);
+        }
+    }
 }
 
 async function addSuspend(type, value, data) {
+    await waitForInit();
     const key = `${type}:${value}`;
     const entry = { ...data, type, value, createdAt: new Date().toISOString() };
     memoryStore.suspends.set(key, entry);
     
-    if (useRedis) {
-        const redisKey = `suspend:${key}`;
-        await redis.set(redisKey, JSON.stringify(entry));
-        if (data.duration) await redis.expire(redisKey, data.duration);
+    if (useRedis && redis) {
+        try {
+            const redisKey = `suspend:${key}`;
+            await redis.set(redisKey, JSON.stringify(entry));
+            if (data.duration) await redis.expire(redisKey, data.duration);
+        } catch (e) {
+            console.error('Redis SET Error:', e.message);
+        }
     }
     saveToFile();
 }
 
 async function removeSuspend(type, value) {
+    await waitForInit();
     const key = `${type}:${value}`;
     memoryStore.suspends.delete(key);
-    if (useRedis) await redis.del(`suspend:${key}`);
+    if (useRedis && redis) {
+        try {
+            await redis.del(`suspend:${key}`);
+        } catch (e) {
+            console.error('Redis DEL Error:', e.message);
+        }
+    }
     saveToFile();
 }
 
 async function getAllSuspends() {
-    if (useRedis) {
-        const keys = await redis.keys('suspend:*');
-        if (keys.length > 0) {
-            const vals = await redis.mget(keys);
-            return vals.map(v => JSON.parse(v));
+    await waitForInit();
+    if (useRedis && redis) {
+        try {
+            const keys = await redis.keys('suspend:*');
+            if (keys.length > 0) {
+                const vals = await redis.mget(keys);
+                return vals.map(v => JSON.parse(v));
+            }
+            return [];
+        } catch (e) {
+            console.error('Redis KEYS Error:', e.message);
         }
-        return [];
     }
     return Array.from(memoryStore.suspends.values());
 }
 
 async function clearSuspends() {
+    await waitForInit();
     memoryStore.suspends.clear();
-    if (useRedis) {
-        const keys = await redis.keys('suspend:*');
-        if (keys.length) await redis.del(keys);
+    if (useRedis && redis) {
+        try {
+            const keys = await redis.keys('suspend:*');
+            if (keys.length) await redis.del(keys);
+        } catch (e) {
+            console.error('Redis KEYS/DEL Error:', e.message);
+        }
     }
     saveToFile();
 }
@@ -392,5 +590,6 @@ module.exports = {
     findKeyByValue,
     
     // Utility
-    isRedisConnected: () => useRedis && redis && redis.status === 'ready'
+    isRedisConnected: () => useRedis && redis && redis.status === 'ready',
+    waitForInit
 };
